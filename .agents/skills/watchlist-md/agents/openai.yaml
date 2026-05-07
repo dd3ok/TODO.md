@@ -1,0 +1,4 @@
+interface:
+  display_name: "WATCHLIST.md"
+  short_description: "Track deferred checks in WATCHLIST.md"
+  default_prompt: "Use $watchlist-md to add or review deferred follow-up checks in WATCHLIST.md without scheduling autonomous reminders."
