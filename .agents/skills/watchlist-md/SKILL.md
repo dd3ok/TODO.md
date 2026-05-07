@@ -1,6 +1,6 @@
 ---
 name: watchlist-md
-description: Use when the user asks to add, review, or complete a future check, later verification, pending async result, or event/time-gated task in WATCHLIST.md, such as CI/deploy/job/data-sync/order/ticket/PR/email. Trigger phrases include WATCHLIST.md, follow-up, later check, pending result, deferred watchlist item, reminder note, 나중에 확인, 몇 시에 체크, 후속 확인, 팔로업, 보류 작업. Does not provide autonomous reminders or wakeups unless an external scheduler is explicitly available.
+description: Records deferred follow-up checks in WATCHLIST.md for later explicit review. Use when the user asks to add, review, complete, snooze, block, or drop a later check, pending async result, or event/time-gated task such as CI, deploy, job, data sync, order, ticket, PR, or email. Records notes only; does not schedule autonomous reminders or wakeups unless an external scheduler is explicitly available.
 ---
 
 # WATCHLIST.md
@@ -23,6 +23,12 @@ Prefer the first existing or appropriate path:
 3. `$HOME/.watchlist/WATCHLIST.md` only for explicitly personal, repo-independent items
 
 Create the selected WATCHLIST.md file if it does not exist. Append or minimally update entries; do not rewrite unrelated content.
+
+## Commit Boundary
+
+- Treat `.watchlist/WATCHLIST.md` as a workspace artifact unless the user says it is shared team state.
+- Do not include WATCHLIST.md changes in commits, PRs, or patches unless the user explicitly asks.
+- For personal or private follow-ups, prefer `$HOME/.watchlist/WATCHLIST.md` or tell the user to exclude the file from version control.
 
 ## When To Add An Item
 
@@ -73,6 +79,8 @@ Priorities:
 - Generate IDs as `WL-YYYYMMDD-NNN` from the creation date in Asia/Seoul by default.
 - Use the next `NNN` for that date by reading existing item IDs.
 - Convert relative times to absolute ISO-8601 timestamps with timezone whenever possible.
+- Before converting relative times, determine the current date/time from the environment when available.
+- If current time is unavailable or ambiguous, use `due_at: unscheduled` and mention the ambiguity instead of inventing a timestamp.
 - Default timezone is `Asia/Seoul` unless the user or repository specifies another timezone.
 - If the time is ambiguous, use `due_at: unscheduled`, keep `status: open`, and briefly mention the ambiguity.
 
@@ -148,7 +156,12 @@ Example:
 Use these prompts to verify skill behavior:
 
 1. `WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인. 실패하면 로그 요약하고 수정 여부 물어봐.`
+   - Expected: creates or updates WATCHLIST.md, appends one `open` item under `## Open`, converts time to ISO-8601 with timezone when current date is available, confirms the ID, and does not promise automatic execution.
 2. `배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.`
+   - Expected: records a deferred check with a concrete `due_at` if current time is available; otherwise uses `due_at: unscheduled` and mentions the ambiguity.
 3. `코드 수정하고 CI가 돌기 시작하면, 아직 결과가 안 나왔을 때 필요한 후속 체크를 남겨.`
+   - Expected: records a check only when CI is actually pending, includes source/context and a concrete `done_when`, and avoids unrelated file changes.
 4. `오늘 확인할 WATCHLIST.md 보여줘.`
+   - Expected: groups `open`, `snoozed`, and `blocked` items into overdue, due today, upcoming, and unscheduled.
 5. `WL-20260507-001 완료 처리해. CI 모두 pass 했어.`
+   - Expected: sets `status: done`, fills `result` and `last_checked_at`, and does not delete the item.
