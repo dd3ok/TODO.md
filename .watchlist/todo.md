@@ -1,4 +1,4 @@
-# Watchlist
+# todo.md
 
 Timezone: Asia/Seoul
 
@@ -9,7 +9,7 @@ This file records future checks, reminders, and deferred work. It is not an auto
 <!-- Add new open items here. Keep items sorted by due_at when practical. -->
 <!-- Field names stay stable; titles and values may be Korean, English, or mixed. -->
 <!--
-### WL-YYYYMMDD-NNN — Short title
+### TODO-YYYYMMDD-NNN — Short title
 - status: open
 - priority: P1
 - owner: agent|user|both

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Follow-up Watchlist"
-  short_description: "Track deferred checks in Markdown"
-  default_prompt: "Use $followup-watchlist to add or review deferred follow-up checks without scheduling autonomous reminders."
