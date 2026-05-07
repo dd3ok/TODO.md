@@ -1,4 +1,4 @@
 interface:
-  display_name: "todo.md"
-  short_description: "Track deferred checks in todo.md"
-  default_prompt: "Use $todo-md to add or review deferred follow-up checks in todo.md without scheduling autonomous reminders."
+  display_name: "TODO.md"
+  short_description: "Track deferred checks in TODO.md"
+  default_prompt: "Use $todo-md to add or review deferred follow-up checks in TODO.md without scheduling autonomous reminders."
