@@ -2,7 +2,7 @@
 
 Timezone: Asia/Seoul
 
-This file records future checks, reminders, and deferred work. It is not an autonomous scheduler.
+This file records future checks, reminder notes, and deferred work. It is not an autonomous scheduler.
 
 ## Open
 

@@ -29,6 +29,12 @@ Restart Codex after installing so the new skill is picked up.
 
 The `.watchlist/WATCHLIST.md` file is a workspace artifact. If it is not present in the target repository, the skill should create it when needed.
 
+For personal/private watchlists, add this to the target repository's `.gitignore`:
+
+```gitignore
+.watchlist/WATCHLIST.md
+```
+
 ## Installation For Claude Code
 
 Claude Code uses `.claude/skills/<skill-name>/SKILL.md` for project skills or `~/.claude/skills/<skill-name>/SKILL.md` for personal skills.
