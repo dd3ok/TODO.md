@@ -1,6 +1,6 @@
 ---
 name: followup-watchlist
-description: Use when deferred follow-up checks, pending verifications, watchlist items, reminders, later checks, todos, CI/deploy/job/data-sync/payment/order/ticket/PR/email results, or async external events must be checked later; triggered by watchlist, follow-up, later, reminder, pending, todo, 나중에, 확인, 체크, 리마인드, 알림, 보류, 후속, 팔로업, 할 일. Does not imply autonomous wakeups unless an external scheduler is explicitly available.
+description: Use when the user asks to add, review, or complete a future check, later verification, pending async result, or event/time-gated task such as CI/deploy/job/data-sync/order/ticket/PR/email. Trigger phrases include watchlist, follow-up, later check, pending result, deferred todo, reminder note, 나중에 확인, 몇 시에 체크, 후속 확인, 팔로업, 보류 작업. Does not provide autonomous reminders or wakeups unless an external scheduler is explicitly available.
 ---
 
 # Follow-up Watchlist

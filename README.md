@@ -11,6 +11,24 @@ This is not an autonomous scheduler, notification service, daemon, database, cro
 .watchlist/WATCHLIST.md
 ```
 
+## Installation For Codex
+
+This repository root is a starter repo. The actual skill directory is:
+
+```text
+.agents/skills/followup-watchlist
+```
+
+Install the skill by passing the skill directory URL, not only the repository root:
+
+```text
+$skill-installer install https://github.com/dd3ok/followup-watchlist-skill/tree/main/.agents/skills/followup-watchlist
+```
+
+Restart Codex after installing so the new skill is picked up.
+
+The `.watchlist/WATCHLIST.md` file is a workspace artifact. If it is not present in the target repository, the skill should create it when needed.
+
 ## What It Does
 
 - Captures future checks such as CI results, deployment verification, pending replies, background jobs, data syncs, payments, orders, PRs, tickets, and emails.
