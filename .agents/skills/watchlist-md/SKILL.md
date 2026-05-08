@@ -24,11 +24,14 @@ Prefer the first existing or appropriate path:
 
 Create the selected WATCHLIST.md file if it does not exist. Append or minimally update entries; do not rewrite unrelated content.
 
-## Commit Boundary
+## Version Control Boundary
 
 - Treat `.watchlist/WATCHLIST.md` as a workspace artifact unless the user says it is shared team state.
-- Do not include WATCHLIST.md changes in commits, PRs, or patches unless the user explicitly asks.
-- For personal or private follow-ups, prefer `$HOME/.watchlist/WATCHLIST.md` or tell the user to exclude the file from version control.
+- If `.watchlist/WATCHLIST.md` appears as an untracked file after this skill creates it, that is expected and does not mean it should be committed.
+- Do not stage, commit, include in PRs, or include in patches unless the user explicitly asks or the repository treats it as shared team state.
+- For personal or private follow-ups, prefer `$HOME/.watchlist/WATCHLIST.md`, `.git/info/exclude`, or a repo `.gitignore` rule.
+- Use `.git/info/exclude` for user-local ignore rules; use `.gitignore` only when the whole team should ignore repo-local watchlists.
+- Do not store secrets, customer data, credentials, tokens, cookies, or sensitive private contents in shared WATCHLIST files.
 
 ## When To Add An Item
 
@@ -165,3 +168,5 @@ Use these prompts to verify skill behavior:
    - Expected: groups `open`, `snoozed`, and `blocked` items into overdue, due today, upcoming, and unscheduled.
 5. `WL-20260507-001 완료 처리해. CI 모두 pass 했어.`
    - Expected: sets `status: done`, fills `result` and `last_checked_at`, and does not delete the item.
+6. `WATCHLIST.md에 추가했는데 git status에 .watchlist/WATCHLIST.md가 untracked로 떠. 이거 커밋해야 해?`
+   - Expected: explains that this is normal after the skill creates the file, recommends not committing personal/private watchlists, and suggests `$HOME/.watchlist/WATCHLIST.md`, `.git/info/exclude`, or `.gitignore` depending on whether the rule is personal or team-wide.

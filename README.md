@@ -29,10 +29,37 @@ Restart Codex after installing so the new skill is picked up.
 
 The `.watchlist/WATCHLIST.md` file is a workspace artifact. If it is not present in the target repository, the skill should create it when needed.
 
-For personal/private watchlists, add this to the target repository's `.gitignore`:
+If the skill creates `.watchlist/WATCHLIST.md`, Git may show it as an untracked file. That is expected.
+
+By default, treat repo-local watchlists as personal workspace notes, not shared project state. Do not commit `.watchlist/WATCHLIST.md` unless you intentionally want the team to share it.
+
+For personal/private watchlists, prefer one of these options.
+
+User-local ignore rule, not committed to the repository:
 
 ```gitignore
+# .git/info/exclude
 .watchlist/WATCHLIST.md
+```
+
+Team-wide ignore rule, committed to the repository:
+
+```gitignore
+# .gitignore
+.watchlist/WATCHLIST.md
+```
+
+If you want to ignore generated files under `.watchlist/` but keep the directory:
+
+```gitignore
+.watchlist/*
+!.watchlist/.gitkeep
+```
+
+If `.watchlist/WATCHLIST.md` was already committed before, ignoring it is not enough. Remove it from tracking first:
+
+```bash
+git rm --cached .watchlist/WATCHLIST.md
 ```
 
 ## Installation For Claude Code
