@@ -1,6 +1,13 @@
 # WATCHLIST.md
 
-Timezone: Asia/Seoul
+schema_version: 1
+mode: template
+automation: none
+
+timezone: Asia/Seoul
+
+<!-- Starter template for repository-local watchlists. In target repositories, treat repo-local watchlists as personal workspace notes unless the team explicitly adopts them. -->
+<!-- This file records deferred checks for explicit review. It is not a scheduler, reminder service, or automation mechanism. -->
 
 This file records future checks, reminder notes, and deferred work. It is not an autonomous scheduler.
 
@@ -12,7 +19,7 @@ This file records future checks, reminder notes, and deferred work. It is not an
 ### WL-YYYYMMDD-NNN — Short title
 - status: open
 - priority: P1
-- owner: agent|user|both
+- owner: user|assistant_on_review|both|external
 - due_at: YYYY-MM-DDTHH:MM:SS+09:00
 - created_at: YYYY-MM-DDTHH:MM:SS+09:00
 - source: short source, link, file, PR, issue, or conversation note
