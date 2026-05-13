@@ -1,6 +1,10 @@
 ---
 name: watchlist-md
-description: Manage WATCHLIST.md entries for explicit user-requested deferred checks: add, review, complete, snooze, block, or drop. Use for pending CI, deploys, jobs, data syncs, orders, tickets, PRs, emails, and other time/event-gated work. Records notes only and never schedules reminders by itself.
+description: >-
+  Manage WATCHLIST.md entries for explicit user-requested deferred checks:
+  add, review, complete, snooze, block, or drop. Use for pending CI,
+  deploys, jobs, data syncs, orders, tickets, PRs, emails, and other
+  time/event-gated work. Records notes only and never schedules reminders by itself.
 ---
 
 # WATCHLIST.md
@@ -71,7 +75,7 @@ Required information: ID, status, due time, owner, action, done condition, and s
 
 Keep field names stable as shown. Titles and field values may be Korean, English, or mixed, matching the user's wording when practical.
 
-`owner` means who should act during the next explicit WATCHLIST review, not who will wake up automatically. Use `assistant_on_review` only when the assistant should help on explicit review. Treat legacy `owner: agent` entries as `assistant_on_review`.
+`owner` means who should act during the next explicit WATCHLIST review, not who will wake up automatically. Use `assistant_on_review` only when the assistant should help on explicit review. Use `external` for third-party systems or people outside the current interaction. Treat legacy `owner: agent` entries as `assistant_on_review`.
 
 Statuses: `open`, `snoozed`, `blocked`, `done`, `dropped`.
 
