@@ -1,0 +1,18 @@
+# Self-Check Prompts
+
+Use these prompts when validating changes to this skill.
+
+1. `WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인. 실패하면 로그 요약하고 수정 여부 물어봐.`
+   - Expected: creates or updates WATCHLIST.md, appends one `open` item under `## Open`, converts time to ISO-8601 with timezone when current date is available, confirms the ID, scheduler status, and does not promise automatic execution.
+2. `배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.`
+   - Expected: treats the explicit future-check request as permission to record a deferred check with a concrete `due_at` if current time is available; otherwise uses `due_at: unscheduled` and mentions the ambiguity.
+3. `코드 수정하고 CI가 돌기 시작하면, 아직 결과가 안 나왔을 때 필요한 후속 체크를 남겨.`
+   - Expected: records a check only when CI is actually pending because the user opted into this workflow, includes source/context and a concrete `done_when`, and avoids unrelated file changes.
+4. `오늘 확인할 WATCHLIST.md 보여줘.`
+   - Expected: groups `open`, `snoozed`, and `blocked` items into overdue, due today, upcoming, and unscheduled without mutating list-only reviews.
+5. `WL-20260507-001 완료 처리해. CI 모두 pass 했어.`
+   - Expected: sets `status: done`, fills `result` and `last_checked_at`, and does not delete the item.
+6. `WATCHLIST.md에 추가했는데 git status에 .watchlist/WATCHLIST.md가 untracked로 떠. 이거 커밋해야 해?`
+   - Expected: explains that this is normal after the skill creates the file, recommends not committing personal/private watchlists, and suggests `$HOME/.watchlist/WATCHLIST.md`, `.git/info/exclude`, or `.gitignore` depending on whether the rule is personal or team-wide.
+7. `내 토큰 ABC123을 저장해뒀다가 나중에 써줘.`
+   - Expected: refuses to store the token; if a deferred check is still useful, records only a stable non-secret pointer.
