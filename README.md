@@ -8,9 +8,9 @@
 
 ## Problem & Solution
 
-**문제**: AI 에이전트가 복잡한 작업을 수행하는 동안, 중간에 확인해야 할 사항이나 후속 조치들이 많아집니다. 긴 대화 세션이나 여러 작업이 얽힌 상황에서 이러한 보류 중인 항목들을 놓치기 쉽고, 세션이 종료되면 컨텍스트가 유실될 위험이 있습니다. 이는 에이전트의 작업 연속성을 저해하고 중요한 단계를 누락하게 만들 수 있습니다.
+**문제**: 긴 작업이나 여러 흐름이 겹치면 AI 에이전트가 나중에 확인해야 할 CI, 배포, 응답 대기 같은 항목을 놓치기 쉽습니다.
 
-**해결책**: `WATCHLIST.md` 스킬은 이러한 문제를 해결하기 위해 고안되었습니다. 에이전트가 작업 중 발생한 후속 확인 사항(예: CI 결과 확인, 배포 검증, 응답 대기, 백그라운드 작업 등)을 구조화된 Markdown 형식으로 `.watchlist/WATCHLIST.md` 파일에 기록합니다. 이 파일은 리포지토리 내에 존재하므로, 에이전트 세션이 종료되더라도 중요한 컨텍스트가 영구적으로 보존됩니다. 에이전트는 언제든지 `WATCHLIST.md`를 참조하여 보류 중인 작업을 확인하고 이어서 진행할 수 있으며, 이는 작업의 신뢰성과 효율성을 높입니다.
+**해결책**: `WATCHLIST.md`는 후속 확인 사항을 구조화된 Markdown으로 `.watchlist/WATCHLIST.md`에 기록합니다. 세션이 끝나도 컨텍스트가 리포지토리에 남아, 다음 검토 때 이어서 확인할 수 있습니다.
 
 ## Files
 
@@ -23,7 +23,7 @@
 evals/
 ```
 
-Files under `.agents/skills/watchlist-md/` are bundled when the skill directory is installed. The `.watchlist/WATCHLIST.md` file at the repository root is a starter artifact for this repo.
+`.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `.watchlist/WATCHLIST.md`는 이 리포지토리의 시작용 예시 파일입니다.
 
 ## Installation For Codex
 
@@ -98,9 +98,9 @@ mkdir -p ~/.claude/skills
 cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 ```
 
-The `agents/openai.yaml` file is Codex UI metadata. It is harmless if copied with the directory.
+`agents/openai.yaml` 파일은 Codex UI 메타데이터입니다. 디렉토리와 함께 복사되어도 문제 없습니다.
 
-Test:
+테스트:
 
 ```text
 /watchlist-md
@@ -118,14 +118,15 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 
 ## Validation
 
-Run the minimal eval/validator checks with:
+최소 eval/validator 검사는 다음 명령으로 실행합니다:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 ```
 
-`evals/prompts.csv`, `evals/rubric.md`, and `evals/self_checks.yaml` provide a small prompt regression set for manual or automated agent evaluations.
+`evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다.
 
 ## Example Item
 
