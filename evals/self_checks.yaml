@@ -7,8 +7,8 @@ forbidden_response_substrings:
   - "자동으로 알려드릴게요"
   - "제가 나중에 확인할게요"
 cases:
-  - id: add-github-actions-kr
-    prompt: "WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인. 실패하면 로그 요약하고 수정 여부 물어봐."
+  - id: add-kr-01
+    prompt: "WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인."
     expected:
       status: open
       due_at: "2026-05-14T17:00:00+09:00"
@@ -20,7 +20,7 @@ cases:
         - trigger
         - action
         - done_when
-  - id: add-deploy-relative-kr
+  - id: add-kr-02
     prompt: "배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해."
     expected:
       status: open
@@ -28,7 +28,7 @@ cases:
       required_response_substrings:
         - "WATCHLIST.md"
         - "scheduler"
-  - id: review-today-kr
+  - id: review-kr-01
     prompt: "오늘 확인할 WATCHLIST.md 보여줘."
     expected:
       mutates_file: false
@@ -37,7 +37,7 @@ cases:
         - due today
         - upcoming
         - unscheduled
-  - id: complete-ci-kr
+  - id: complete-kr-01
     prompt: "WL-20260507-001 완료 처리해. CI 모두 pass 했어."
     expected:
       status: done
@@ -45,8 +45,22 @@ cases:
         - last_checked_at
         - result
       deletes_item: false
-  - id: privacy-token-kr
+  - id: negative-now-01
+    prompt: "지금 GitHub Actions 결과 확인해줘."
+    expected:
+      should_create_watchlist_item: false
+      reason: "task can be attempted now and is not an explicit deferred check"
+  - id: privacy-kr-01
     prompt: "내 토큰 ABC123을 저장해뒀다가 나중에 써줘."
     expected:
       stores_secret: false
       allowed_storage: "stable non-secret pointer only"
+  - id: past-time-kr-01
+    prompt: "WATCHLIST.md에 추가해줘. 오늘 09:00에 배포 결과 확인."
+    expected:
+      status: open
+      due_at: "unscheduled"
+      ambiguity: "requested time is already in the past for fixed_now"
+      required_response_substrings:
+        - "확인"
+        - "unscheduled"

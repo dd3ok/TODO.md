@@ -3,6 +3,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import csv
+import re
 from pathlib import Path
 
 
@@ -205,6 +207,25 @@ timezone: Asia/Seoul
 
         self.assert_check_fails(text, "snoozed item requires result")
 
+    def test_snoozed_due_at_unscheduled_fails(self):
+        text = (
+            VALID_WATCHLIST.replace("- status: open", "- status: snoozed")
+            .replace("- due_at: 2026-05-14T17:00:00+09:00", "- due_at: unscheduled")
+            .replace("- last_checked_at:", "- last_checked_at: 2026-05-14T17:00:00+09:00")
+            .replace("- result:", "- result: Still pending")
+        )
+
+        self.assert_check_fails(text, "snoozed item requires scheduled due_at")
+
+    def test_open_due_at_unscheduled_passes(self):
+        text = VALID_WATCHLIST.replace(
+            "- due_at: 2026-05-14T17:00:00+09:00", "- due_at: unscheduled"
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
     def test_blocked_requires_result_and_last_checked_at(self):
         text = (
             VALID_WATCHLIST.replace("- status: open", "- status: blocked")
@@ -240,6 +261,20 @@ timezone: Asia/Seoul
         text = template.read_text(encoding="utf-8")
 
         self.assertNotIn("mode: template", text)
+
+    def test_self_checks_include_past_time_and_negative_now_cases(self):
+        text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("id: past-time-kr-01", text)
+        self.assertIn("id: negative-now-01", text)
+
+    def test_self_checks_case_ids_match_prompts_csv(self):
+        with (REPO_ROOT / "evals" / "prompts.csv").open(encoding="utf-8", newline="") as fh:
+            prompt_ids = [row["id"] for row in csv.DictReader(fh)]
+        self_check_text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
+        self_check_ids = re.findall(r"^\s+- id: ([^\s]+)$", self_check_text, flags=re.M)
+
+        self.assertEqual(prompt_ids, self_check_ids)
 
 
 if __name__ == "__main__":

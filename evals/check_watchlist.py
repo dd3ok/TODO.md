@@ -134,6 +134,8 @@ def validate(text: str) -> None:
         if status == "snoozed":
             require_field_value(watch_id, fields, "result", "snoozed item")
             require_field_value(watch_id, fields, "last_checked_at", "snoozed item")
+            if fields["due_at"] == "unscheduled":
+                fail(f"snoozed item requires scheduled due_at in {watch_id}")
         if status == "blocked":
             require_field_value(watch_id, fields, "result", "blocked item")
             require_field_value(watch_id, fields, "last_checked_at", "blocked item")
