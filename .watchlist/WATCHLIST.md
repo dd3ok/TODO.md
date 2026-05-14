@@ -1,7 +1,6 @@
 # WATCHLIST.md
 
 schema_version: 1
-mode: template
 automation: none
 
 timezone: Asia/Seoul

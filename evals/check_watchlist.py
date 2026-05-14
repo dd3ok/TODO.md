@@ -24,6 +24,8 @@ REQUIRED_FIELDS = {
     "result",
     "next_step_on_fail",
 }
+SKELETON_FIELDS = ("schema_version", "automation", "timezone")
+SKELETON_SECTIONS = ("## Open", "## Done")
 HEADING_RE = re.compile(r"^### (WL-\d{8}-\d{3})\s+(?:—|-)\s+.+$")
 TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$"
@@ -76,7 +78,26 @@ def validate_timestamp(watch_id: str, field: str, value: str, allow_unscheduled:
         fail(f"Invalid {field} in {watch_id}: {value}")
 
 
+def validate_skeleton(text: str) -> None:
+    text = strip_html_comments(text)
+    for field in SKELETON_FIELDS:
+        if not re.search(rf"^{field}:\s*\S+", text, flags=re.M):
+            fail(f"Missing WATCHLIST skeleton field: {field}")
+    if not re.search(r"^# WATCHLIST\.md\s*$", text, flags=re.M):
+        fail("Missing WATCHLIST skeleton heading: # WATCHLIST.md")
+    for section in SKELETON_SECTIONS:
+        if not re.search(rf"^{re.escape(section)}\s*$", text, flags=re.M):
+            fail(f"Missing WATCHLIST skeleton section: {section}")
+
+
+def require_field_value(watch_id: str, fields: dict[str, str], field: str, context: str) -> None:
+    if not fields[field]:
+        fail(f"{context} requires {field} in {watch_id}")
+
+
 def validate(text: str) -> None:
+    validate_skeleton(text)
+
     ids = [item_id(block) for block in item_blocks(text)]
     duplicate_ids = sorted({watch_id for watch_id in ids if ids.count(watch_id) > 1})
     if duplicate_ids:
@@ -107,14 +128,24 @@ def validate(text: str) -> None:
                 allow_unscheduled=False,
             )
 
-        if status == "done" and not fields["result"]:
-            fail(f"done item requires result in {watch_id}")
-        if status == "blocked" and not fields["next_step_on_fail"]:
-            fail(f"blocked item requires next_step_on_fail in {watch_id}")
+        if status == "done":
+            require_field_value(watch_id, fields, "result", "done item")
+            require_field_value(watch_id, fields, "last_checked_at", "done item")
+        if status == "snoozed":
+            require_field_value(watch_id, fields, "result", "snoozed item")
+            require_field_value(watch_id, fields, "last_checked_at", "snoozed item")
+        if status == "blocked":
+            require_field_value(watch_id, fields, "result", "blocked item")
+            require_field_value(watch_id, fields, "last_checked_at", "blocked item")
+            require_field_value(watch_id, fields, "next_step_on_fail", "blocked item")
+        if status == "dropped":
+            require_field_value(watch_id, fields, "result", "dropped item")
 
 
 def main(argv: list[str]) -> int:
     path = Path(argv[1] if len(argv) > 1 else ".watchlist/WATCHLIST.md")
+    if not path.is_file():
+        fail(f"WATCHLIST file not found: {path}")
     text = path.read_text(encoding="utf-8")
     validate(text)
     print("WATCHLIST.md validation passed")

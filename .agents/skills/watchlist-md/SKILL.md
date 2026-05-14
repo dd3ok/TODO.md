@@ -33,7 +33,7 @@ Create the selected WATCHLIST.md file if it does not exist. Append or minimally 
 
 ## File Creation Template
 
-When creating a new WATCHLIST.md, use `assets/WATCHLIST.template.md` as the starting content if this bundled asset is available.
+When creating a new WATCHLIST.md, use `assets/WATCHLIST.template.md` as the starting content if this bundled asset is available. Do not add `mode: template` to live WATCHLIST.md files; if a repository wants a mode marker, use a live value such as `mode: personal` or omit the field.
 
 If the asset is unavailable, create at minimum:
 
