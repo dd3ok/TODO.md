@@ -2,10 +2,12 @@
 name: watchlist-md
 description: >-
   Manages WATCHLIST.md entries for explicit user-requested deferred checks:
-  add, review, complete, snooze, block, or drop. Use when the user says
+  add, review, complete/done, snooze, block, drop, delete, or archive.
+  Use when the user says
   WATCHLIST.md, WATCHLIST.md에 추가, 나중에 확인, 후속 체크, 몇 시에 체크,
-  리마인드, pending result, or asks to record time/event-gated CI, deploy,
-  job, data sync, order, ticket, PR, or email follow-up. Records notes only;
+  리마인드, 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, 아카이브,
+  pending result, blocked, snoozed, archive, or asks to record time/event-gated
+  CI, deploy, job, data sync, order, ticket, PR, or email follow-up. Records notes only;
   never schedules reminders or wakeups without an explicitly available external scheduler.
 ---
 
@@ -104,6 +106,8 @@ Keep field names stable as shown. Titles and field values may be Korean, English
 
 Statuses: `open`, `snoozed`, `blocked`, `done`, `dropped`.
 
+`dropped` preserves a record that the follow-up is no longer needed. Deleting removes the record itself. Prefer `status: dropped` by default; delete an item only when the user explicitly asks to remove the record.
+
 Priorities:
 
 - `P0`: urgent or user-blocking
@@ -128,6 +132,10 @@ List-only reviews do not change status. Mutate an item only when the user asks f
 | `blocked` | `done` | `done_when` is satisfied or the user reports completion | `last_checked_at`, `result` |
 | any active status | `dropped` | user says to drop, cancel, or ignore | `result` |
 | `done` or `dropped` | active status | user explicitly asks to reopen | `result` describing the reopen reason |
+
+When marking an item done, the default lifecycle update is: set `status: done`, fill `last_checked_at`, fill `result`, and move the completed item under `## Done` if that section exists. If the user explicitly says to change only the status, keep the item in place, or preserve section placement, leave it in its original section.
+
+Do not archive items automatically. Move old `done` or `dropped` items to `## Archive` only when the user explicitly asks for archiving. If `## Archive` does not exist, create it when performing that explicit archive request. A pre-existing empty `## Archive` section is only a destination marker; it does not authorize automatic movement. A reasonable manual archive policy is "archive `done` or `dropped` items older than 30 days," but do not apply it unless requested.
 
 ## ID And Time Rules
 
@@ -173,6 +181,8 @@ When asked to review, list, or inspect WATCHLIST.md:
 4. For each due or overdue item, propose the next concrete check.
 5. If you perform a check, update `last_checked_at`, `result`, `status`, and `next_step_on_fail` as appropriate.
 
+Only perform checks the current environment can actually verify. Examples that are usually checkable during explicit review include GitHub Actions status, public PR state, and local tests. Examples that require explicit user authorization or a configured connector include email inboxes, payment systems, admin dashboards, and private internal systems. If authorization is missing, report that the item needs user action or permission instead of guessing.
+
 Recommended output shape:
 
 ~~~md
@@ -201,9 +211,22 @@ When the user says an item is complete or the done condition is verified:
 1. Confirm the done condition has been met or record the user's stated result.
 2. Set `status: done`.
 3. Fill `last_checked_at` and `result`.
-4. Do not delete the item unless the user explicitly asks.
+4. If `## Done` exists, move the completed item under `## Done` by default.
+5. Keep the item in its original location only when the user explicitly says to change only the status, keep the position, or avoid moving sections.
+6. Do not delete the item unless the user explicitly asks.
 
-If the user asks to drop or delete an item, prefer `status: dropped` with a short result. Delete only when the user explicitly requests removal.
+If the user asks to drop an item, use `status: dropped` with a short result so the history remains visible. If the user asks to delete, remove the item only when the request clearly means removing the record itself.
+
+## Archive Workflow
+
+Do not archive automatically during add, review, complete, drop, or delete workflows.
+
+Archive only when the user explicitly asks to move old completed or dropped records out of the active sections. When archiving:
+
+1. Select only the requested `done` or `dropped` items. If no policy is specified, ask or use an explicit user-approved policy such as "older than 30 days."
+2. Create `## Archive` if it does not exist.
+3. Move the selected items under `## Archive` without changing unrelated entries.
+4. Preserve each item's fields and result history.
 
 ## Failed Or Still Pending Checks
 
@@ -226,6 +249,7 @@ Example:
 
 - Do not claim autonomous wakeups, reminders, notifications, or future execution unless an actual scheduler or automation mechanism is configured and used.
 - Do not access email, calendars, payment systems, admin panels, account settings, or private systems without explicit user authorization.
+- During explicit WATCHLIST review, checks such as GitHub Actions, public PRs, and local tests may be performed when the environment provides access. Checks involving email, payments, admin dashboards, or private systems need explicit permission and the appropriate connector or credentials.
 - Re-confirm before high-impact actions such as purchases, deployments, account changes, deletions, or external messages.
 - Do not store secrets, passwords, tokens, cookies, private keys, or sensitive personal data in WATCHLIST.md.
 - Store pointers, not credentials or sensitive contents. Example: “check private dashboard,” not a token or cookie.

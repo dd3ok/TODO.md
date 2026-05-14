@@ -91,10 +91,24 @@ mkdir -p .claude/skills
 cp -R .agents/skills/watchlist-md .claude/skills/watchlist-md
 ```
 
+기존 설치를 갱신할 때는 중첩 복사를 피하려고 대상 디렉토리를 지운 뒤 다시 복사하세요:
+
+```bash
+rm -rf .claude/skills/watchlist-md
+cp -R .agents/skills/watchlist-md .claude/skills/watchlist-md
+```
+
 개인 설치:
 
 ```bash
 mkdir -p ~/.claude/skills
+cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
+```
+
+개인 설치 갱신:
+
+```bash
+rm -rf ~/.claude/skills/watchlist-md
 cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 ```
 
@@ -111,7 +125,7 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 
 - CI 결과, 배포 검증, 보류 중인 회신, 백그라운드 작업, 데이터 동기화, 결제, 주문, PR, 티켓, 이메일과 같은 향후 확인 사항을 캡처합니다.
 - WATCHLIST.md 항목을 Markdown으로 저장합니다.
-- 추가, 검토, 완료, 차단됨, 일시 중지됨, 삭제됨 워크플로우를 지원합니다.
+- 추가, 검토, 완료, 차단됨, 일시 중지됨, 드롭됨 워크플로우를 지원합니다.
 - 필드 이름은 안정적으로 유지하면서 한국어, 영어 또는 혼합된 제목과 값을 허용합니다.
 - 나중에 검토할 수 있도록 연기된 확인 사항을 기록합니다.
 - 별도의 스케줄러 또는 자동화 도구가 명시적으로 사용 가능하고 사용되지 않는 한 자동으로 예약, 깨우기, 알림 또는 실행되지 않습니다.
@@ -148,12 +162,24 @@ python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.te
 
 `owner`는 다음 명시적인 WATCHLIST 검토 중에 누가 조치해야 하는지를 의미합니다. 이는 어시스턴트가 자동으로 깨어난다는 의미는 아닙니다.
 
+완료 처리의 기본 동작은 `status: done`, `last_checked_at`, `result`를 채우고, `## Done` 섹션이 있으면 완료 항목을 그 아래로 이동하는 것입니다. 사용자가 “상태만 바꿔” 또는 “위치 유지”처럼 명시하면 항목을 원래 위치에 둘 수 있습니다.
+
+`dropped`는 더 이상 필요 없는 후속 확인의 기록을 보존하는 상태입니다. Delete는 기록 자체를 제거하는 동작이므로 기본적으로 권장하지 않으며, 사용자가 명시적으로 삭제를 요청할 때만 수행해야 합니다.
+
+자동 archive는 하지 않습니다. 오래된 `done` 또는 `dropped` 항목은 사용자가 명시적으로 archive를 요청할 때만 `## Archive` 섹션으로 이동합니다. `## Archive`가 없으면 그 요청을 처리할 때 생성할 수 있습니다. 템플릿에 빈 `## Archive` 섹션이 있어도 자동 이동을 승인한다는 뜻은 아닙니다. 예시 보존 기준은 “30일 지난 done/dropped 항목”이지만, 이 기준도 자동으로 실행하지 않습니다.
+
+명시적인 검토 중 에이전트가 바로 확인할 수 있는 항목은 접근 가능한 GitHub Actions, public PR 상태, local tests 같은 것들입니다. Email inbox, payment system, admin dashboard, private internal system은 명시적 권한과 적절한 connector 또는 credential이 필요합니다.
+
 ## Usage Prompts
 
 ```text
 WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.
 오늘 확인할 WATCHLIST.md 보여줘.
+오늘 due 된 WATCHLIST.md 확인해줘.
+overdue인 WATCHLIST.md 항목만 확인해줘.
+완료된 항목들을 Done 섹션으로 정리해줘.
+blocked 항목만 보여줘.
 WL-20260507-001 완료 처리해. CI 모두 pass 했어.
 ```
 

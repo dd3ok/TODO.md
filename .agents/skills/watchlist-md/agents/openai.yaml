@@ -1,4 +1,4 @@
 interface:
   display_name: "WATCHLIST.md"
   short_description: "Track deferred checks and 후속 체크 in WATCHLIST.md"
-  default_prompt: "Use $watchlist-md when a user asks to add or review WATCHLIST.md, 나중에 확인, 몇 시에 체크, 리마인드, or 후속 체크 notes without scheduling autonomous reminders."
+  default_prompt: "Use $watchlist-md when a user asks to add, review, complete, drop, delete, archive, or check WATCHLIST.md entries, including 나중에 확인, 몇 시에 체크, 리마인드, 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, or 아카이브 notes without scheduling autonomous reminders."
