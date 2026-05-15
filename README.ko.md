@@ -173,9 +173,10 @@ python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.te
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
+python3 evals/check_semantic_cases.py
 ```
 
-`evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다.
+`evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, `evals/cases/*.json`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다. Semantic case checker는 기대 trigger와 operation 계약을 검증하며, LLM 또는 agent를 실행하지 않습니다.
 
 ## Example Item
 

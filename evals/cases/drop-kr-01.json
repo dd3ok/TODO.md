@@ -1,0 +1,18 @@
+{
+  "id": "drop-kr-01",
+  "prompt": "WL-20260507-001 더 이상 필요 없어. 드롭 처리해.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "with-open-item.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "drop_item",
+    "item_id": "WL-20260507-001",
+    "status": "dropped",
+    "required_updates": [
+      "result"
+    ],
+    "deletes_item": false,
+    "preserves_record": true
+  }
+}

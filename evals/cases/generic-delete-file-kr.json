@@ -1,0 +1,12 @@
+{
+  "id": "generic-delete-file-kr",
+  "prompt": "README.md 삭제해줘",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": false,
+  "expected": {
+    "reason": "generic delete request without WATCHLIST.md or WL-* context",
+    "must_not_modify_watchlist": true
+  }
+}

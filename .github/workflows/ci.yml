@@ -38,6 +38,9 @@ jobs:
       - name: Check policy drift
         run: python evals/check_policy_markers.py
 
+      - name: Check semantic cases
+        run: python evals/check_semantic_cases.py
+
       - name: Validate starter WATCHLIST
         run: python evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 

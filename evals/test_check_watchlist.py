@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 import csv
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -13,6 +14,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECK_SCRIPT = REPO_ROOT / "evals" / "check_watchlist.py"
 POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
 RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
+SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
+
+_SEMANTIC_SPEC = importlib.util.spec_from_file_location(
+    "check_semantic_cases", SEMANTIC_SCRIPT
+)
+SEMANTIC_CASES = importlib.util.module_from_spec(_SEMANTIC_SPEC)
+_SEMANTIC_SPEC.loader.exec_module(SEMANTIC_CASES)
 
 
 VALID_WATCHLIST = """# WATCHLIST.md
@@ -432,6 +440,47 @@ timezone: Asia/Seoul
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Policy marker check passed", result.stdout)
+
+    def test_semantic_case_checker_passes(self):
+        result = self.run_script(SEMANTIC_SCRIPT)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Semantic case check passed", result.stdout)
+
+    def test_semantic_self_check_parser_supports_single_quoted_prompts(self):
+        text = """cases:
+  - id: sample-case
+    prompt: 'WATCHLIST.md에 추가해줘.'
+    expected:
+      should_trigger_skill: true
+"""
+
+        parsed = SEMANTIC_CASES.parse_self_checks(text)
+
+        self.assertEqual(parsed["sample-case"]["prompt"], "WATCHLIST.md에 추가해줘.")
+
+    def test_semantic_case_validation_rejects_unparseable_self_check_prompt(self):
+        case = {
+            "id": "sample-case",
+            "prompt": "WATCHLIST.md에 추가해줘.",
+            "locale": "ko",
+            "fixed_now": "2026-05-15T10:00:00+09:00",
+            "fixture": "empty.watchlist.md",
+            "should_trigger_skill": False,
+            "expected": {"must_not_modify_watchlist": True},
+        }
+        prompts = {
+            "sample-case": {
+                "id": "sample-case",
+                "should_trigger": "false",
+                "prompt": "WATCHLIST.md에 추가해줘.",
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": None}}, errors)
+
+        self.assertIn("sample-case: prompt could not be parsed from self_checks.yaml", errors)
 
 
 if __name__ == "__main__":
