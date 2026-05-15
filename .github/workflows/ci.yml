@@ -39,7 +39,7 @@ jobs:
         run: python evals/check_policy_markers.py
 
       - name: Validate starter WATCHLIST
-        run: python evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-safety --require-archive-section
+        run: python evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 
       - name: Validate bundled WATCHLIST template
-        run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-safety --require-archive-section
+        run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section

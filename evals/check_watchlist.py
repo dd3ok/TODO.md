@@ -276,7 +276,7 @@ def scan_safety(
                     f"{REDACTION_GUIDANCE}"
                 )
                 if strict_safety:
-                    add_error(result, code, message, watch_id, field, severity=severity)
+                    add_error(result, code, message, watch_id, field, severity="error")
                 else:
                     add_warning(result, code, message, watch_id, field)
 

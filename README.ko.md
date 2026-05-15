@@ -170,7 +170,7 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-safety --require-archive-section
+python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 ```

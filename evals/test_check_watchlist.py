@@ -246,6 +246,19 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails_with_args(text, "GENERIC_SIGNED_URL", "--strict-safety")
 
+    def test_strict_safety_escalates_warning_severity_in_json(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?token=abc123",
+        )
+
+        result = self.run_check(text, "--strict-safety", "--json")
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["errors"][0]["code"], "GENERIC_SIGNED_URL")
+        self.assertEqual(payload["errors"][0]["severity"], "error")
+
     def test_default_safety_scan_warns_without_failing(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",

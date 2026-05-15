@@ -13,6 +13,7 @@
 
 - Hardened WATCHLIST validation while keeping the default validator mode backward-compatible.
 - Expanded CI coverage for release metadata, policy drift, and stricter starter/template validation.
+- Promoted strict safety findings to `error` severity in JSON output and added strict format checks for canonical starter/template validation.
 
 ### Security
 
