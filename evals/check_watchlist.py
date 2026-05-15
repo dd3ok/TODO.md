@@ -250,6 +250,15 @@ def validate_top_level_fields(text: str, result: ValidationResult, options: Vali
             f"Invalid archive_policy: {archive_policy}. Use manual or suggest.",
         )
 
+    if archive_policy == "suggest" and archive_after_days is None:
+        add_format_finding(
+            result,
+            options,
+            "ARCHIVE_SUGGEST_WITHOUT_ARCHIVE_AFTER_DAYS",
+            "archive_policy: suggest requires archive_after_days.",
+        )
+        return
+
     if archive_after_days is None:
         return
 

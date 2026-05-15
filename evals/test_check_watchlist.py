@@ -291,6 +291,29 @@ class CheckWatchlistTests(unittest.TestCase):
             "--strict-format",
         )
 
+    def test_archive_suggest_without_after_days_warns_by_default(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: suggest\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("ARCHIVE_SUGGEST_WITHOUT_ARCHIVE_AFTER_DAYS", result.stdout)
+
+    def test_archive_suggest_without_after_days_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: suggest\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "ARCHIVE_SUGGEST_WITHOUT_ARCHIVE_AFTER_DAYS",
+            "--strict-format",
+        )
+
     def test_strict_safety_rejects_bearer_token(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",
