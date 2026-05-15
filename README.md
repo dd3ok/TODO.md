@@ -14,6 +14,26 @@
 
 **Solution**: `WATCHLIST.md` records follow-up checks as structured Markdown in `.watchlist/WATCHLIST.md`. Context remains in the repository after a session ends, so the next review can pick up where the previous one left off.
 
+## Quickstart
+
+Install the skill directory:
+
+```text
+$skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents/skills/watchlist-md
+```
+
+Then ask an agent:
+
+```text
+Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.
+```
+
+Validate a watchlist file:
+
+```bash
+python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+```
+
 ## Files
 
 ```text
@@ -132,6 +152,16 @@ Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.
 - Records deferred checks for later review.
 - Does not schedule, wake up, notify, or execute automatically unless a separate scheduler or automation tool is explicitly available and used.
 
+## Non-goals
+
+`WATCHLIST.md` does not:
+
+- run checks automatically
+- send reminders or wakeups
+- access private systems without authorization and configured access
+- replace issue trackers, incident systems, or project management tools
+- store secrets, signed URLs, raw logs, raw emails, or private excerpts
+
 ## Validation
 
 Run the minimal eval/validator checks with:
@@ -140,6 +170,9 @@ Run the minimal eval/validator checks with:
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
+python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-safety --require-archive-section
+python3 evals/check_release_metadata.py
+python3 evals/check_policy_markers.py
 ```
 
 `evals/prompts.csv`, `evals/rubric.md`, and `evals/self_checks.yaml` are a small prompt regression set for manual or automated agent evaluation.

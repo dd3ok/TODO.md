@@ -14,6 +14,26 @@
 
 **해결책**: `WATCHLIST.md`는 후속 확인 사항을 구조화된 Markdown으로 `.watchlist/WATCHLIST.md`에 기록합니다. 세션이 끝나도 컨텍스트가 리포지토리에 남아, 다음 검토 때 이어서 확인할 수 있습니다.
 
+## Quickstart
+
+스킬 디렉토리를 설치합니다:
+
+```text
+$skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents/skills/watchlist-md
+```
+
+에이전트에게 요청합니다:
+
+```text
+WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
+```
+
+워치리스트 파일을 검증합니다:
+
+```bash
+python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+```
+
 ## Files
 
 ```text
@@ -132,6 +152,16 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 - 나중에 검토할 수 있도록 연기된 확인 사항을 기록합니다.
 - 별도의 스케줄러 또는 자동화 도구가 명시적으로 사용 가능하고 사용되지 않는 한 자동으로 예약, 깨우기, 알림 또는 실행되지 않습니다.
 
+## Non-goals
+
+`WATCHLIST.md`가 하지 않는 일:
+
+- 확인 작업 자동 실행
+- reminder 또는 wakeup 전송
+- 명시적 권한과 설정된 접근 수단 없이 private system 접근
+- issue tracker, incident system, project management tool 대체
+- secret, signed URL, raw log, raw email, private excerpt 저장
+
 ## Validation
 
 최소 eval/validator 검사는 다음 명령으로 실행합니다:
@@ -140,6 +170,9 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
+python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-safety --require-archive-section
+python3 evals/check_release_metadata.py
+python3 evals/check_policy_markers.py
 ```
 
 `evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다.
