@@ -8,6 +8,7 @@
 - Release metadata and policy marker checkers for CI and local verification.
 - OpenAI/Codex metadata guardrails for notes-only behavior, scheduler boundaries, and sensitive-data handling.
 - Quickstart, non-goals, contributing, security, and pull request guidance.
+- Deterministic semantic case fixtures and checker for trigger and operation contracts.
 
 ### Changed
 

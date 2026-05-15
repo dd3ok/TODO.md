@@ -173,9 +173,10 @@ python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.te
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
+python3 evals/check_semantic_cases.py
 ```
 
-`evals/prompts.csv`, `evals/rubric.md`, and `evals/self_checks.yaml` are a small prompt regression set for manual or automated agent evaluation.
+`evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, and `evals/cases/*.json` are a small prompt regression set for manual or automated agent evaluation. The semantic case checker validates the expected trigger and operation contract; it does not run an LLM or agent.
 
 ## Example Item
 

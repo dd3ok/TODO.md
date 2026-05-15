@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECK_SCRIPT = REPO_ROOT / "evals" / "check_watchlist.py"
 POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
 RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
+SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
 
 
 VALID_WATCHLIST = """# WATCHLIST.md
@@ -432,6 +433,12 @@ timezone: Asia/Seoul
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Policy marker check passed", result.stdout)
+
+    def test_semantic_case_checker_passes(self):
+        result = self.run_script(SEMANTIC_SCRIPT)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Semantic case check passed", result.stdout)
 
 
 if __name__ == "__main__":

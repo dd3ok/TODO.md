@@ -1,6 +1,8 @@
 # WATCHLIST.md Skill Eval Rubric
 
 Use `prompts.csv` as a small regression set for manual or automated agent runs.
+Use `cases/*.json` for deterministic semantic contracts that define expected
+trigger and operation behavior without running an LLM or agent.
 
 Score each run on these checks:
 
@@ -15,4 +17,5 @@ For file-level validation, run:
 
 ```bash
 python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_semantic_cases.py
 ```

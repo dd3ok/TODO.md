@@ -1,0 +1,22 @@
+{
+  "id": "complete-kr-01",
+  "prompt": "WL-20260507-001 완료 처리해. CI 모두 pass 했어.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "with-open-item.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "complete_item",
+    "item_id": "WL-20260507-001",
+    "status": "done",
+    "required_updates": [
+      "last_checked_at",
+      "result"
+    ],
+    "default_section": "## Done",
+    "must_not": [
+      "delete_item",
+      "rewrite_unrelated_items"
+    ]
+  }
+}

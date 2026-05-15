@@ -1,0 +1,28 @@
+{
+  "id": "add-kr-01",
+  "prompt": "WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "add_item",
+    "status": "open",
+    "due_at": "2026-05-14T17:00:00+09:00",
+    "scheduler": "none",
+    "required_fields": [
+      "source",
+      "trigger",
+      "action",
+      "done_when"
+    ],
+    "forbidden_response_substrings": [
+      "I'll remind you",
+      "I will remind you",
+      "I'll check later",
+      "I will check later",
+      "자동으로 알려드릴게요",
+      "제가 나중에 확인할게요"
+    ]
+  }
+}

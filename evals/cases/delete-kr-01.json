@@ -1,0 +1,17 @@
+{
+  "id": "delete-kr-01",
+  "prompt": "WL-20260507-001 기록 자체를 삭제해줘.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "with-open-item.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "delete_item",
+    "item_id": "WL-20260507-001",
+    "explicit_record_removal": true,
+    "deletes_item": true,
+    "must_not": [
+      "rewrite_unrelated_items"
+    ]
+  }
+}
