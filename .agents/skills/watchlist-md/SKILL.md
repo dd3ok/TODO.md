@@ -137,6 +137,21 @@ When marking an item done, the default lifecycle update is: set `status: done`, 
 
 Do not archive items automatically. Move old `done` or `dropped` items to `## Archive` only when the user explicitly asks for archiving. If `## Archive` does not exist, create it when performing that explicit archive request. A pre-existing empty `## Archive` section is only a destination marker; it does not authorize automatic movement. A reasonable manual archive policy is "archive `done` or `dropped` items older than 30 days," but do not apply it unless requested.
 
+## Deletion And Retention Policy
+
+Preserve WATCHLIST.md history by default:
+
+- Use `status: done` when the follow-up is complete.
+- Use `status: dropped` when the follow-up is no longer needed, canceled, or intentionally ignored.
+- Do not hard-delete an item just because it is complete or no longer needed.
+
+Hard-delete or redact only when:
+
+- The user explicitly asks to remove the record itself.
+- The item contains secrets, credentials, tokens, cookies, private keys, sensitive personal data, raw private excerpts, signed URLs, or tokenized URLs.
+
+For sensitive-data incidents, remove or redact the unsafe value immediately and keep only a safe pointer if a follow-up record is still useful. If sensitive data was committed to Git history, tell the user to rotate affected secrets and handle Git history cleanup separately; do not rewrite history unless the user explicitly asks for that operation.
+
 ## ID And Time Rules
 
 - Generate IDs as `WL-YYYYMMDD-NNN` from the creation date in Asia/Seoul by default.
