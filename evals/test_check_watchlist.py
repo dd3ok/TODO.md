@@ -262,11 +262,37 @@ timezone: Asia/Seoul
 
         self.assertNotIn("mode: template", text)
 
-    def test_self_checks_include_past_time_and_negative_now_cases(self):
+    def test_starter_templates_label_commented_item_as_example_only(self):
+        paths = [
+            REPO_ROOT / ".agents" / "skills" / "watchlist-md" / "assets" / "WATCHLIST.template.md",
+            REPO_ROOT / ".watchlist" / "WATCHLIST.md",
+        ]
+
+        for path in paths:
+            with self.subTest(path=path):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn("Example only", text)
+                self.assertIn("### WL-20260514-001", text)
+                self.assertIn("Do not copy the literal ID or timestamps", text)
+                self.assertIn("## Archive", text)
+                self.assertIn("This empty section is only a destination marker", text)
+
+                result = self.run_check_path(path)
+
+                self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_self_checks_include_lifecycle_cases(self):
         text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
 
         self.assertIn("id: past-time-kr-01", text)
         self.assertIn("id: negative-now-01", text)
+        self.assertIn("id: generic-delete-file-kr", text)
+        self.assertIn("id: generic-cancel-task-kr", text)
+        self.assertIn("id: generic-complete-task-kr", text)
+        self.assertIn("id: drop-kr-01", text)
+        self.assertIn("id: delete-kr-01", text)
+        self.assertIn("id: archive-kr-01", text)
+        self.assertIn("id: permission-kr-01", text)
 
     def test_self_checks_case_ids_match_prompts_csv(self):
         with (REPO_ROOT / "evals" / "prompts.csv").open(encoding="utf-8", newline="") as fh:
