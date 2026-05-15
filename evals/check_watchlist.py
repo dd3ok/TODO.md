@@ -32,6 +32,9 @@ FIELD_ORDER = [
 ]
 REQUIRED_FIELDS = set(FIELD_ORDER)
 SKELETON_FIELDS = ("schema_version", "automation", "timezone")
+KNOWN_TOP_LEVEL_FIELDS = set(SKELETON_FIELDS).union(
+    {"mode", "archive_policy", "archive_after_days"}
+)
 SKELETON_SECTIONS = ("## Open", "## Done")
 HEADING_RE_COMPAT = re.compile(r"^### (WL-\d{8}-\d{3})\s+(?P<separator>—|-)\s+.+$")
 TIMESTAMP_RE = re.compile(
@@ -217,13 +220,31 @@ def validate_skeleton(text: str, result: ValidationResult, options: ValidationOp
             add_error(result, "MISSING_SKELETON_SECTION", f"Missing WATCHLIST skeleton section: {section}")
 
 
-def top_level_fields(text: str) -> dict[str, str]:
+def top_level_fields(
+    text: str,
+    result: ValidationResult,
+    options: ValidationOptions,
+) -> dict[str, str]:
     text = strip_html_comments(text)
     preamble = re.split(r"^##\s+", text, maxsplit=1, flags=re.M)[0]
-    return {
-        match.group(1): match.group(2).strip()
-        for match in TOP_LEVEL_FIELD_RE.finditer(preamble)
-    }
+    fields: dict[str, str] = {}
+    for match in TOP_LEVEL_FIELD_RE.finditer(preamble):
+        field = match.group(1)
+        if field in fields:
+            add_error(
+                result,
+                "DUPLICATE_TOP_LEVEL_FIELD",
+                f"Duplicate top-level field: {field}",
+            )
+        if field not in KNOWN_TOP_LEVEL_FIELDS:
+            add_format_finding(
+                result,
+                options,
+                "UNKNOWN_TOP_LEVEL_FIELD",
+                f"Unknown top-level field: {field}",
+            )
+        fields[field] = match.group(2).strip()
+    return fields
 
 
 def add_format_finding(
@@ -239,7 +260,7 @@ def add_format_finding(
 
 
 def validate_top_level_fields(text: str, result: ValidationResult, options: ValidationOptions) -> None:
-    fields = top_level_fields(text)
+    fields = top_level_fields(text, result, options)
     archive_policy = fields.get("archive_policy")
     archive_after_days = fields.get("archive_after_days")
 

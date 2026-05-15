@@ -314,6 +314,37 @@ class CheckWatchlistTests(unittest.TestCase):
             "--strict-format",
         )
 
+    def test_duplicate_top_level_field_fails(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: manual\narchive_policy: suggest\narchive_after_days: 30\n",
+        )
+
+        self.assert_check_fails(text, "DUPLICATE_TOP_LEVEL_FIELD")
+
+    def test_unknown_top_level_field_warns_by_default(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_polciy: suggest\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("UNKNOWN_TOP_LEVEL_FIELD", result.stdout)
+
+    def test_unknown_top_level_field_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_polciy: suggest\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "UNKNOWN_TOP_LEVEL_FIELD",
+            "--strict-format",
+        )
+
     def test_strict_safety_rejects_bearer_token(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",
