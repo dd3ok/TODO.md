@@ -6,10 +6,16 @@ permissions:
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deterministic-checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     strategy:
       matrix:
         python-version: ["3.8", "3.x"]
@@ -26,8 +32,14 @@ jobs:
       - name: Run unit tests
         run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s evals -p 'test_*.py'
 
+      - name: Validate release metadata
+        run: python evals/check_release_metadata.py
+
+      - name: Check policy drift
+        run: python evals/check_policy_markers.py
+
       - name: Validate starter WATCHLIST
-        run: python evals/check_watchlist.py .watchlist/WATCHLIST.md
+        run: python evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
 
       - name: Validate bundled WATCHLIST template
-        run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
+        run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section

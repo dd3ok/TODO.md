@@ -4,12 +4,15 @@ import sys
 import tempfile
 import unittest
 import csv
+import json
 import re
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECK_SCRIPT = REPO_ROOT / "evals" / "check_watchlist.py"
+POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
+RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
 
 
 VALID_WATCHLIST = """# WATCHLIST.md
@@ -39,15 +42,24 @@ timezone: Asia/Seoul
 
 
 class CheckWatchlistTests(unittest.TestCase):
-    def run_check(self, text):
+    def run_check(self, text, *args):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "WATCHLIST.md"
             path.write_text(text, encoding="utf-8")
-            return self.run_check_path(path)
+            return self.run_check_path(path, *args)
 
-    def run_check_path(self, path):
+    def run_check_path(self, path, *args):
         return subprocess.run(
-            [sys.executable, str(CHECK_SCRIPT), str(path)],
+            [sys.executable, str(CHECK_SCRIPT), str(path), *args],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def run_script(self, script):
+        return subprocess.run(
+            [sys.executable, str(script)],
             cwd=REPO_ROOT,
             text=True,
             capture_output=True,
@@ -60,11 +72,38 @@ class CheckWatchlistTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(expected_message, result.stderr + result.stdout)
 
+    def assert_check_fails_with_args(self, text, expected_message, *args):
+        result = self.run_check(text, *args)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(expected_message, result.stderr + result.stdout)
+
     def test_valid_watchlist_passes(self):
         result = self.run_check(VALID_WATCHLIST)
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validation passed", result.stdout)
+
+    def test_json_output_success_is_machine_readable(self):
+        result = self.run_check(VALID_WATCHLIST, "--json")
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["items"], 1)
+        self.assertEqual(payload["errors"], [])
+        self.assertIn("warnings", payload)
+
+    def test_json_output_failure_is_machine_readable(self):
+        text = VALID_WATCHLIST.replace("- status: open", "- status: waiting")
+
+        result = self.run_check(text, "--json")
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["errors"][0]["code"], "INVALID_STATUS")
+        self.assertNotIn("Traceback", result.stderr + result.stdout)
 
     def test_commented_placeholder_heading_is_ignored(self):
         text = VALID_WATCHLIST.replace(
@@ -151,6 +190,86 @@ class CheckWatchlistTests(unittest.TestCase):
         text = VALID_WATCHLIST.replace("### WL-20260514-001", "### WL20260514-001")
 
         self.assert_check_fails(text, "Malformed WATCHLIST item heading")
+
+    def test_default_mode_accepts_hyphen_heading_separator(self):
+        text = VALID_WATCHLIST.replace(" — CI result check", " - CI result check")
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_strict_format_rejects_hyphen_heading_separator(self):
+        text = VALID_WATCHLIST.replace(" — CI result check", " - CI result check")
+
+        self.assert_check_fails_with_args(
+            text,
+            "NON_STRICT_HEADING_SEPARATOR",
+            "--strict-format",
+        )
+
+    def test_strict_format_rejects_field_order_drift(self):
+        text = VALID_WATCHLIST.replace(
+            "- status: open\n- priority: P1\n",
+            "- priority: P1\n- status: open\n",
+        )
+
+        self.assert_check_fails_with_args(text, "FIELD_ORDER", "--strict-format")
+
+    def test_require_archive_section_rejects_missing_archive(self):
+        self.assert_check_fails_with_args(
+            VALID_WATCHLIST,
+            "Missing WATCHLIST skeleton section: ## Archive",
+            "--require-archive-section",
+        )
+
+    def test_strict_safety_rejects_bearer_token(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: Authorization: Bearer ghp_123456789012345678901234567890123456",
+        )
+
+        self.assert_check_fails_with_args(text, "Potential secret detected", "--strict-safety")
+
+    def test_strict_safety_rejects_signed_url(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?X-Amz-Signature=abc123",
+        )
+
+        self.assert_check_fails_with_args(text, "AWS_SIGNED_URL", "--strict-safety")
+
+    def test_strict_safety_rejects_generic_signed_url(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?token=abc123",
+        )
+
+        self.assert_check_fails_with_args(text, "GENERIC_SIGNED_URL", "--strict-safety")
+
+    def test_strict_safety_escalates_warning_severity_in_json(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?token=abc123",
+        )
+
+        result = self.run_check(text, "--strict-safety", "--json")
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["errors"][0]["code"], "GENERIC_SIGNED_URL")
+        self.assertEqual(payload["errors"][0]["severity"], "error")
+
+    def test_default_safety_scan_warns_without_failing(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?token=abc123",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("GENERIC_SIGNED_URL", result.stdout)
+        self.assertIn("validation passed", result.stdout)
 
     def test_missing_required_field_fails(self):
         text = VALID_WATCHLIST.replace("- source: GitHub Actions run for PR #12\n", "")
@@ -301,6 +420,18 @@ timezone: Asia/Seoul
         self_check_ids = re.findall(r"^\s+- id: ([^\s]+)$", self_check_text, flags=re.M)
 
         self.assertEqual(prompt_ids, self_check_ids)
+
+    def test_release_metadata_checker_passes(self):
+        result = self.run_script(RELEASE_SCRIPT)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Release metadata check passed", result.stdout)
+
+    def test_policy_marker_checker_passes(self):
+        result = self.run_script(POLICY_SCRIPT)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Policy marker check passed", result.stdout)
 
 
 if __name__ == "__main__":
