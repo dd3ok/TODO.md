@@ -161,13 +161,11 @@ def require_item_in_fixture(
         errors.append(f"{case_id}: fixture does not contain item_id {item_id}")
 
 
-def validate_add_item(case: dict[str, object], errors: list[str]) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
+def validate_add_item(
+    case_id: str,
+    expected: dict[str, object],
+    errors: list[str],
+) -> None:
     require_keys(
         expected,
         {"operation", "status", "due_at", "scheduler", "required_fields", "forbidden_response_substrings"},
@@ -198,16 +196,11 @@ def validate_add_item(case: dict[str, object], errors: list[str]) -> None:
 
 
 def validate_complete_item(
-    case: dict[str, object],
+    case_id: str,
+    expected: dict[str, object],
     fixture_text: str,
     errors: list[str],
 ) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
     require_keys(
         expected,
         {"operation", "item_id", "status", "required_updates", "must_not"},
@@ -230,16 +223,11 @@ def validate_complete_item(
 
 
 def validate_drop_item(
-    case: dict[str, object],
+    case_id: str,
+    expected: dict[str, object],
     fixture_text: str,
     errors: list[str],
 ) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
     require_keys(
         expected,
         {"operation", "item_id", "status", "required_updates", "deletes_item", "preserves_record"},
@@ -259,16 +247,11 @@ def validate_drop_item(
 
 
 def validate_delete_item(
-    case: dict[str, object],
+    case_id: str,
+    expected: dict[str, object],
     fixture_text: str,
     errors: list[str],
 ) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
     require_keys(
         expected,
         {"operation", "item_id", "explicit_record_removal", "deletes_item", "must_not"},
@@ -285,13 +268,11 @@ def validate_delete_item(
         errors.append(f"{case_id}: delete_item must_not must include rewrite_unrelated_items")
 
 
-def validate_archive_items(case: dict[str, object], errors: list[str]) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
+def validate_archive_items(
+    case_id: str,
+    expected: dict[str, object],
+    errors: list[str],
+) -> None:
     require_keys(
         expected,
         {"operation", "explicit_archive_request", "allowed_statuses", "forbidden_statuses"},
@@ -309,13 +290,11 @@ def validate_archive_items(case: dict[str, object], errors: list[str]) -> None:
             errors.append(f"{case_id}: archive_items forbidden_statuses must include {status}")
 
 
-def validate_refuse_secret_storage(case: dict[str, object], errors: list[str]) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
+def validate_refuse_secret_storage(
+    case_id: str,
+    expected: dict[str, object],
+    errors: list[str],
+) -> None:
     require_keys(
         expected,
         {"operation", "stores_secret", "allowed_storage", "must_not"},
@@ -333,13 +312,11 @@ def validate_refuse_secret_storage(case: dict[str, object], errors: list[str]) -
         )
 
 
-def validate_review_items(case: dict[str, object], errors: list[str]) -> None:
-    case_id = str(case["id"])
-    expected = case["expected"]
-    if not isinstance(expected, dict):
-        errors.append(f"{case_id}: expected must be an object")
-        return
-
+def validate_review_items(
+    case_id: str,
+    expected: dict[str, object],
+    errors: list[str],
+) -> None:
     require_keys(expected, {"operation"}, case_id, errors, "expected")
     if expected.get("mutates_file") is False:
         groups = set(expected.get("groups", []))
@@ -417,19 +394,19 @@ def validate_case(
         return
 
     if operation == "add_item":
-        validate_add_item(case, errors)
+        validate_add_item(case_id, expected, errors)
     elif operation == "archive_items":
-        validate_archive_items(case, errors)
+        validate_archive_items(case_id, expected, errors)
     elif operation == "complete_item":
-        validate_complete_item(case, fixture_text, errors)
+        validate_complete_item(case_id, expected, fixture_text, errors)
     elif operation == "delete_item":
-        validate_delete_item(case, fixture_text, errors)
+        validate_delete_item(case_id, expected, fixture_text, errors)
     elif operation == "drop_item":
-        validate_drop_item(case, fixture_text, errors)
+        validate_drop_item(case_id, expected, fixture_text, errors)
     elif operation == "refuse_secret_storage":
-        validate_refuse_secret_storage(case, errors)
+        validate_refuse_secret_storage(case_id, expected, errors)
     elif operation == "review_items":
-        validate_review_items(case, errors)
+        validate_review_items(case_id, expected, errors)
 
 
 def main() -> int:
