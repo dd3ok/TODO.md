@@ -56,21 +56,36 @@ def load_prompts() -> dict[str, dict[str, str]]:
         return {row["id"]: row for row in csv.DictReader(fh)}
 
 
-def load_self_checks() -> dict[str, dict[str, str]]:
-    text = SELF_CHECKS.read_text(encoding="utf-8")
-    cases: dict[str, dict[str, str]] = {}
+def parse_yaml_scalar(value: str) -> Optional[str]:
+    value = value.strip()
+    if not value:
+        return ""
+    if value[0] in {"'", '"'}:
+        quote = value[0]
+        if len(value) < 2 or value[-1] != quote:
+            return None
+        return value[1:-1]
+    return value
+
+
+def parse_self_checks(text: str) -> dict[str, dict[str, Optional[str]]]:
+    cases: dict[str, dict[str, Optional[str]]] = {}
     for match in re.finditer(
         r"^\s+- id: (?P<id>[^\s]+)\s*\n(?P<body>.*?)(?=^\s+- id: |\Z)",
         text,
         flags=re.M | re.S,
     ):
         body = match.group("body")
-        prompt = ""
-        prompt_match = re.search(r"^\s+prompt:\s*\"(?P<prompt>.*)\"\s*$", body, flags=re.M)
+        prompt = None
+        prompt_match = re.search(r"^\s+prompt:\s*(?P<prompt>.*?)\s*$", body, flags=re.M)
         if prompt_match:
-            prompt = prompt_match.group("prompt")
+            prompt = parse_yaml_scalar(prompt_match.group("prompt"))
         cases[match.group("id")] = {"prompt": prompt}
     return cases
+
+
+def load_self_checks() -> dict[str, dict[str, Optional[str]]]:
+    return parse_self_checks(SELF_CHECKS.read_text(encoding="utf-8"))
 
 
 def validate_iso_timestamp(value: str, case_id: str, errors: list[str], field: str) -> None:
@@ -340,7 +355,7 @@ def validate_review_items(case: dict[str, object], errors: list[str]) -> None:
 def validate_case(
     case: dict[str, object],
     prompts: dict[str, dict[str, str]],
-    self_checks: dict[str, dict[str, str]],
+    self_checks: dict[str, dict[str, Optional[str]]],
     errors: list[str],
 ) -> None:
     case_id = str(case.get("id", "<missing-id>"))
@@ -357,7 +372,9 @@ def validate_case(
     self_check = self_checks.get(case_id)
     if self_check is None:
         errors.append(f"{case_id}: missing from self_checks.yaml")
-    elif self_check.get("prompt") and case.get("prompt") != self_check["prompt"]:
+    elif self_check.get("prompt") is None:
+        errors.append(f"{case_id}: prompt could not be parsed from self_checks.yaml")
+    elif case.get("prompt") != self_check["prompt"]:
         errors.append(f"{case_id}: prompt differs from self_checks.yaml")
 
     expected_should_trigger = case.get("should_trigger_skill")
