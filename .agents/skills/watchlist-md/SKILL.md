@@ -45,6 +45,7 @@ If the asset is unavailable, create at minimum:
 schema_version: 1
 automation: none
 timezone: Asia/Seoul
+archive_policy: manual
 
 This file records future checks, reminder notes, and deferred work.
 It is not an autonomous scheduler.
@@ -135,7 +136,19 @@ List-only reviews do not change status. Mutate an item only when the user asks f
 
 When marking an item done, the default lifecycle update is: set `status: done`, fill `last_checked_at`, fill `result`, and move the completed item under `## Done` if that section exists. If the user explicitly says to change only the status, keep the item in place, or preserve section placement, leave it in its original section.
 
-Do not archive items automatically. Move old `done` or `dropped` items to `## Archive` only when the user explicitly asks for archiving. If `## Archive` does not exist, create it when performing that explicit archive request. A pre-existing empty `## Archive` section is only a destination marker; it does not authorize automatic movement. A reasonable manual archive policy is "archive `done` or `dropped` items older than 30 days," but do not apply it unless requested.
+## Archive Policy
+
+WATCHLIST.md preserves history by default. Do not archive items automatically.
+
+Optional top-level fields may express the repository's preferred archive behavior:
+
+- `archive_policy: manual`: archive only when the user explicitly asks.
+- `archive_policy: suggest`: during explicit WATCHLIST review, suggest archiving `done` or `dropped` items older than `archive_after_days`, but do not move them automatically.
+- `archive_after_days: 30`: suggested age threshold for archive candidates when `archive_policy: suggest`.
+
+List-only reviews must not mutate the file. Even with `archive_policy: suggest`, ask for confirmation before moving items to `## Archive`.
+
+Archive policy is a review-time preference, not a background job.
 
 ## Deletion And Retention Policy
 
@@ -163,6 +176,22 @@ For sensitive-data incidents, remove or redact the unsafe value immediately and 
 - Default timezone is `Asia/Seoul` unless the user or repository specifies another timezone.
 - If the time is ambiguous, use `due_at: unscheduled`, keep `status: open`, and briefly mention the ambiguity.
 - If the requested time is already in the past for the resolved date, ask whether to record the past timestamp or use the next occurrence. If clarification is not possible, use `due_at: unscheduled` and record the ambiguity.
+
+## Concurrent Edit And ID Collision Policy
+
+WATCHLIST.md is a Markdown note, not a transactional database. Concurrent writes can conflict.
+
+Before adding a new item:
+
+1. Re-read WATCHLIST.md immediately before writing.
+2. Scan all existing `WL-YYYYMMDD-NNN` IDs.
+3. Pick the next unused sequence for the current date.
+4. Apply the smallest possible edit.
+5. Validate the file after writing.
+
+If duplicate IDs are detected, stop and report the collision. Do not silently rewrite unrelated items to resolve the conflict.
+
+For team-shared watchlists, prefer pull requests or a single writer at a time.
 
 ## Add Workflow
 

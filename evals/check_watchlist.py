@@ -15,6 +15,7 @@ VALID_STATUSES = {"open", "snoozed", "blocked", "done", "dropped"}
 VALID_PRIORITIES = {"P0", "P1", "P2", "P3"}
 # "agent" is accepted for legacy compatibility; use "assistant_on_review" for new items.
 VALID_OWNERS = {"user", "assistant_on_review", "both", "external", "agent"}
+VALID_ARCHIVE_POLICIES = {"manual", "suggest"}
 FIELD_ORDER = [
     "status",
     "priority",
@@ -37,6 +38,7 @@ TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$"
 )
 FIELD_RE = re.compile(r"^- ([a-z_]+):[ \t]*(.*)$", flags=re.M)
+TOP_LEVEL_FIELD_RE = re.compile(r"^([a-z_]+):[ \t]*(.*)$", flags=re.M)
 SENSITIVE_PATTERNS = {
     "PRIVATE_KEY": (r"-----BEGIN (?:RSA |EC |OPENSSH |)?PRIVATE KEY-----", "error"),
     "BEARER_TOKEN": (r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", "error"),
@@ -215,6 +217,76 @@ def validate_skeleton(text: str, result: ValidationResult, options: ValidationOp
             add_error(result, "MISSING_SKELETON_SECTION", f"Missing WATCHLIST skeleton section: {section}")
 
 
+def top_level_fields(text: str) -> dict[str, str]:
+    text = strip_html_comments(text)
+    preamble = re.split(r"^##\s+", text, maxsplit=1, flags=re.M)[0]
+    return {
+        match.group(1): match.group(2).strip()
+        for match in TOP_LEVEL_FIELD_RE.finditer(preamble)
+    }
+
+
+def add_format_finding(
+    result: ValidationResult,
+    options: ValidationOptions,
+    code: str,
+    message: str,
+) -> None:
+    if options.strict_format:
+        add_error(result, code, message)
+    else:
+        add_warning(result, code, message)
+
+
+def validate_top_level_fields(text: str, result: ValidationResult, options: ValidationOptions) -> None:
+    fields = top_level_fields(text)
+    archive_policy = fields.get("archive_policy")
+    archive_after_days = fields.get("archive_after_days")
+
+    if archive_policy and archive_policy not in VALID_ARCHIVE_POLICIES:
+        add_error(
+            result,
+            "INVALID_ARCHIVE_POLICY",
+            f"Invalid archive_policy: {archive_policy}. Use manual or suggest.",
+        )
+
+    if archive_after_days is None:
+        return
+
+    try:
+        days = int(archive_after_days)
+    except ValueError:
+        add_error(
+            result,
+            "INVALID_ARCHIVE_AFTER_DAYS",
+            f"archive_after_days must be a positive integer: {archive_after_days}",
+        )
+        return
+
+    if days <= 0:
+        add_error(
+            result,
+            "INVALID_ARCHIVE_AFTER_DAYS",
+            f"archive_after_days must be a positive integer: {archive_after_days}",
+        )
+        return
+
+    if archive_policy is None:
+        add_format_finding(
+            result,
+            options,
+            "ARCHIVE_AFTER_DAYS_WITHOUT_POLICY",
+            "archive_after_days is only meaningful with archive_policy: suggest.",
+        )
+    elif archive_policy == "manual":
+        add_format_finding(
+            result,
+            options,
+            "ARCHIVE_AFTER_DAYS_WITH_MANUAL_POLICY",
+            "archive_after_days is only meaningful with archive_policy: suggest.",
+        )
+
+
 def require_field_value(
     result: ValidationResult,
     watch_id: str,
@@ -284,6 +356,7 @@ def scan_safety(
 def validate(text: str, path: str, options: ValidationOptions) -> ValidationResult:
     result = ValidationResult(path=path)
     validate_skeleton(text, result, options)
+    validate_top_level_fields(text, result, options)
 
     blocks = item_blocks(text)
     result.items = len(blocks)

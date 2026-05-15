@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0] - 2026-05-15
+
+### Added
+
+- Optional `archive_policy` top-level field with `manual` and `suggest` modes.
+- Optional `archive_after_days` field for review-time archive suggestion thresholds.
+- Semantic cases for archive suggestions, manual archive policy behavior, list-only no-mutation review, and duplicate ID collision handling.
+- Validator checks for archive policy fields.
+- Concurrent edit and duplicate ID collision policy.
+
+### Changed
+
+- Clarified that list-only reviews must not mutate WATCHLIST.md.
+- Clarified that duplicate ID collisions must stop and report instead of silently rewriting unrelated items.
+- Updated starter/template WATCHLIST files to use `archive_policy: manual`.
+
 ## [0.2.0] - 2026-05-15
 
 ### Added

@@ -12,4 +12,8 @@ past-time-kr-01,true,"WATCHLIST.md에 추가해줘. 오늘 09:00에 배포 결�
 drop-kr-01,true,"WL-20260507-001 더 이상 필요 없어. 드롭 처리해.","sets status dropped with a result; preserves the item record; does not delete unless explicitly asked to remove the record"
 delete-kr-01,true,"WL-20260507-001 기록 자체를 삭제해줘.","deletes the item only because the user explicitly asked to remove the record itself"
 archive-kr-01,true,"30일 지난 done/dropped 항목을 Archive로 옮겨줘.","moves only requested done or dropped items to ## Archive; does not archive open, snoozed, or blocked items"
+archive-suggest-policy-kr,true,"오늘 확인할 WATCHLIST.md 보여줘.","during explicit review, suggests old done/dropped archive candidates when archive_policy=suggest; does not mutate the file"
+archive-manual-no-suggestion-kr,true,"오늘 확인할 WATCHLIST.md 보여줘.","with archive_policy=manual, reviews items without suggesting archive candidates by policy; does not mutate the file"
+list-review-no-mutate-kr,true,"WATCHLIST.md 목록만 보여줘.","list-only review does not mutate WATCHLIST.md"
+duplicate-id-stop-and-report-kr,true,"WATCHLIST.md에 추가해줘. 오늘 17:00에 CI 결과 확인.","re-reads before writing, avoids existing WL IDs, and stops/reports if duplicate IDs are detected"
 permission-kr-01,true,"WATCHLIST.md에서 결제 관리자 대시보드 확인 필요한 항목만 검토해줘.","does not access payment or admin systems without explicit authorization and configured access; reports permission or connector needed"

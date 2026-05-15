@@ -2,8 +2,8 @@
 
 schema_version: 1
 automation: none
-
 timezone: Asia/Seoul
+archive_policy: manual
 
 <!-- Starter template for repository-local watchlists. In target repositories, treat repo-local watchlists as personal workspace notes unless the team explicitly adopts them. -->
 <!-- This file records deferred checks for explicit review. It is not a scheduler, reminder service, or automation mechanism. -->
@@ -37,4 +37,4 @@ Do not copy the literal ID or timestamps; generate fresh values when adding an i
 
 ## Archive
 
-<!-- Do not archive automatically. This empty section is only a destination marker; move old done/dropped items here only when explicitly requested. -->
+<!-- Do not archive automatically. archive_policy: manual means archive only on explicit request. This empty section is only a destination marker; move old done/dropped items here only when explicitly requested. -->

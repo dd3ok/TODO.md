@@ -206,6 +206,31 @@ python3 evals/check_semantic_cases.py
 
 명시적인 검토 중 에이전트가 바로 확인할 수 있는 항목은 접근 가능한 GitHub Actions, public PR 상태, local tests 같은 것들입니다. Email inbox, payment system, admin dashboard, private internal system은 명시적 권한과 적절한 connector 또는 credential이 필요합니다.
 
+## Archive Policy
+
+기본 top-level 정책은 다음입니다:
+
+```md
+archive_policy: manual
+```
+
+장기 운영 또는 팀 공유 워치리스트는 검토 시점 archive 제안을 opt-in으로 켤 수 있습니다:
+
+```md
+archive_policy: suggest
+archive_after_days: 30
+```
+
+이 설정은 검토 시점 제안 정책일 뿐입니다. 자율 archive 또는 백그라운드 변경을 승인하지 않습니다. 명시적인 WATCHLIST 검토 중 에이전트는 오래된 `done` 또는 `dropped` archive 후보를 제안할 수 있지만, 목록만 보여주는 review는 WATCHLIST.md를 변경하면 안 됩니다. 항목을 `## Archive`로 옮기기 전에는 확인을 받아야 합니다.
+
+## Concurrent Edits
+
+WATCHLIST.md는 Markdown 노트이지 transactional database가 아닙니다. 동시 쓰기는 충돌할 수 있습니다.
+
+항목을 추가하기 전 에이전트는 쓰기 직전에 WATCHLIST.md를 다시 읽고, 기존 `WL-YYYYMMDD-NNN` ID를 모두 확인한 뒤, 현재 날짜의 다음 미사용 번호를 선택하고, 가능한 가장 작은 수정만 적용하며, 이후 파일을 검증해야 합니다.
+
+중복 ID가 발견되면 관련 없는 항목을 조용히 다시 쓰지 말고 중단 후 충돌을 보고해야 합니다. 팀 공유 워치리스트에서는 pull request 또는 단일 writer 방식을 선호하세요.
+
 ## Usage Prompts
 
 ```text
