@@ -41,6 +41,7 @@ cases:
     prompt: "WL-20260507-001 완료 처리해. CI 모두 pass 했어."
     expected:
       status: done
+      default_section: "## Done"
       required_fields:
         - last_checked_at
         - result
@@ -50,6 +51,21 @@ cases:
     expected:
       should_create_watchlist_item: false
       reason: "task can be attempted now and is not an explicit deferred check"
+  - id: generic-delete-file-kr
+    prompt: "README.md 삭제해줘"
+    expected:
+      should_trigger_skill: false
+      reason: "generic delete request without WATCHLIST.md or WL-* context"
+  - id: generic-cancel-task-kr
+    prompt: "방금 말한 작업 취소해줘"
+    expected:
+      should_trigger_skill: false
+      reason: "generic cancel request without WATCHLIST.md or WL-* context"
+  - id: generic-complete-task-kr
+    prompt: "수정 작업 완료됐어"
+    expected:
+      should_trigger_skill: false
+      reason: "generic completion statement without WATCHLIST.md or WL-* context"
   - id: privacy-kr-01
     prompt: "내 토큰 ABC123을 저장해뒀다가 나중에 써줘."
     expected:

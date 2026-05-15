@@ -286,6 +286,9 @@ timezone: Asia/Seoul
 
         self.assertIn("id: past-time-kr-01", text)
         self.assertIn("id: negative-now-01", text)
+        self.assertIn("id: generic-delete-file-kr", text)
+        self.assertIn("id: generic-cancel-task-kr", text)
+        self.assertIn("id: generic-complete-task-kr", text)
         self.assertIn("id: drop-kr-01", text)
         self.assertIn("id: delete-kr-01", text)
         self.assertIn("id: archive-kr-01", text)

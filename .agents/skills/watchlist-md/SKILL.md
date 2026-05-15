@@ -1,14 +1,14 @@
 ---
 name: watchlist-md
 description: >-
-  Manages WATCHLIST.md entries for explicit user-requested deferred checks:
-  add, review, complete/done, snooze, block, drop, delete, or archive.
-  Use when the user says
-  WATCHLIST.md, WATCHLIST.md에 추가, 나중에 확인, 후속 체크, 몇 시에 체크,
-  리마인드, 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, 아카이브,
-  pending result, blocked, snoozed, archive, or asks to record time/event-gated
-  CI, deploy, job, data sync, order, ticket, PR, or email follow-up. Records notes only;
-  never schedules reminders or wakeups without an explicitly available external scheduler.
+  Manages WATCHLIST.md entries for explicit user-requested deferred checks and
+  lifecycle updates. Use when the user mentions WATCHLIST.md, a WL-* item ID,
+  WATCHLIST.md에 추가, 나중에 확인, 후속 체크, 몇 시에 체크, 리마인드,
+  pending result, or asks to record time/event-gated CI, deploy, job, data sync,
+  order, ticket, PR, or email follow-up. Lifecycle words such as 완료, 삭제,
+  취소, 드롭, 차단, 연기, 보관, and 아카이브 apply only when they clearly refer
+  to WATCHLIST.md or a WL-* item. Records notes only; never schedules reminders
+  or wakeups without an explicitly available external scheduler.
 ---
 
 # WATCHLIST.md
