@@ -238,6 +238,18 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails_with_args(text, "AWS_SIGNED_URL", "--strict-safety")
 
+    def test_default_safety_scan_warns_without_failing(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: https://example.com/report?token=abc123",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("GENERIC_SIGNED_URL", result.stdout)
+        self.assertIn("validation passed", result.stdout)
+
     def test_missing_required_field_fails(self):
         text = VALID_WATCHLIST.replace("- source: GitHub Actions run for PR #12\n", "")
 

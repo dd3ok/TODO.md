@@ -268,8 +268,6 @@ def scan_safety(
     fields: dict[str, str],
     strict_safety: bool,
 ) -> None:
-    if not strict_safety:
-        return
     for field, value in fields.items():
         for code, (pattern, severity) in SENSITIVE_PATTERNS.items():
             if re.search(pattern, value, flags=re.I):
@@ -277,7 +275,7 @@ def scan_safety(
                     f"Potential secret detected in {watch_id} field {field}: {code}.\n"
                     f"{REDACTION_GUIDANCE}"
                 )
-                if severity == "error" or strict_safety:
+                if strict_safety:
                     add_error(result, code, message, watch_id, field, severity=severity)
                 else:
                     add_warning(result, code, message, watch_id, field)
