@@ -31,7 +31,7 @@ Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.
 Validate a watchlist file:
 
 ```bash
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 ```
 
 ## Files
@@ -41,11 +41,15 @@ python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
 .agents/skills/watchlist-md/references/self-checks.md
-.watchlist/WATCHLIST.md
+.agents/skills/watchlist-md/references/lifecycle.md
+.agents/skills/watchlist-md/references/safety.md
+.agents/skills/watchlist-md/scripts/validate_watchlist.py
+examples/WATCHLIST.example.md
+.watchlist/.gitkeep
 evals/
 ```
 
-Files under `.agents/skills/watchlist-md/` are bundled together when installing the skill directory. The root `.watchlist/WATCHLIST.md` file is a starter example for this repository.
+Files under `.agents/skills/watchlist-md/` are bundled together when installing the skill directory. The root `examples/WATCHLIST.example.md` file is this repository's starter example; generated `.watchlist/WATCHLIST.md` files are ignored by default.
 
 ## Installation For Codex
 
@@ -63,11 +67,17 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 Restart Codex after installation so the new skill is detected.
 
-This repository's `.watchlist/WATCHLIST.md` file is a starter/template artifact. In target repositories, a repository-local watchlist is normally a personal workspace note. If the file does not exist, the skill should create it when needed.
+This repository keeps the starter artifact at `examples/WATCHLIST.example.md`. In target repositories, a repository-local watchlist is normally a personal workspace note. If the file does not exist, the skill should create it when needed.
 
-When the skill creates `.watchlist/WATCHLIST.md`, Git may show it as an untracked file. This is expected.
+When the skill creates `.watchlist/WATCHLIST.md`, Git should ignore it in this starter repository. In target repositories without an ignore rule, Git may show it as an untracked file; that is expected.
 
 The installable skill bundle also includes `assets/WATCHLIST.template.md`, so an agent can create a new WATCHLIST.md even when only `.agents/skills/watchlist-md` is installed.
+
+The installable skill bundle also includes `scripts/validate_watchlist.py`, so validation works after installing only the skill directory:
+
+```bash
+python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+```
 
 Personal or private watchlists should not be committed by default. If the notes are workspace-only, use a user-local ignore rule.
 
@@ -136,6 +146,17 @@ cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 
 The `agents/openai.yaml` file is Codex UI metadata. It is safe if it is copied with the directory.
 
+## Installation For ChatGPT / OpenAI Skills
+
+OpenAI skill surfaces do not automatically sync with Codex or Claude Code installs. When uploading a skill bundle, package the skill directory itself as the archive root:
+
+```bash
+cd .agents/skills/watchlist-md
+zip -r watchlist-md-skill.zip SKILL.md assets references scripts agents
+```
+
+Upload the resulting zip through the OpenAI skill management UI or workflow you are using. The bundled validator is included under `scripts/validate_watchlist.py`; repository-level `evals/` are only for this source repo.
+
 Test:
 
 ```text
@@ -168,9 +189,10 @@ Run the minimal eval/validator checks with:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
+python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py

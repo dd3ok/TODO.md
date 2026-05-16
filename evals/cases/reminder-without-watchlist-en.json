@@ -1,0 +1,12 @@
+{
+  "id": "reminder-without-watchlist-en",
+  "prompt": "Remind me tomorrow at 9 to check the deployment.",
+  "locale": "en",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": false,
+  "expected": {
+    "reason": "scheduler/reminder request without explicit WATCHLIST recording intent",
+    "must_not_modify_watchlist": true
+  }
+}

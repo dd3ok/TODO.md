@@ -41,8 +41,11 @@ jobs:
       - name: Check semantic cases
         run: python evals/check_semantic_cases.py
 
-      - name: Validate starter WATCHLIST
-        run: python evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
+      - name: Validate example WATCHLIST
+        run: python evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
 
       - name: Validate bundled WATCHLIST template
         run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+
+      - name: Smoke test bundled validator
+        run: python .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section

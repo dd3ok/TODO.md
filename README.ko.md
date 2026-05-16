@@ -31,7 +31,7 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 워치리스트 파일을 검증합니다:
 
 ```bash
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 ```
 
 ## Files
@@ -41,11 +41,15 @@ python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
 .agents/skills/watchlist-md/references/self-checks.md
-.watchlist/WATCHLIST.md
+.agents/skills/watchlist-md/references/lifecycle.md
+.agents/skills/watchlist-md/references/safety.md
+.agents/skills/watchlist-md/scripts/validate_watchlist.py
+examples/WATCHLIST.example.md
+.watchlist/.gitkeep
 evals/
 ```
 
-`.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `.watchlist/WATCHLIST.md`는 이 리포지토리의 시작용 예시 파일입니다.
+`.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `examples/WATCHLIST.example.md`는 이 리포지토리의 시작용 예시 파일이며, 생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 ignore됩니다.
 
 ## Installation For Codex
 
@@ -63,11 +67,17 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 새 스킬이 인식되도록 설치 후 Codex를 다시 시작하세요.
 
-이 리포지토리의 `.watchlist/WATCHLIST.md` 파일은 스타터/템플릿 아티팩트입니다. 대상 리포지토리에서는 리포지토리 로컬 워치리스트가 기본적으로 개인 작업 공간 노트입니다. 파일이 없으면 스킬은 필요할 때 파일을 생성해야 합니다.
+이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 리포지토리 로컬 워치리스트가 기본적으로 개인 작업 공간 노트입니다. 파일이 없으면 스킬은 필요할 때 파일을 생성해야 합니다.
 
-스킬이 `.watchlist/WATCHLIST.md`를 생성하면 Git은 이를 추적되지 않는 파일로 표시할 수 있습니다. 이는 예상된 동작입니다.
+이 스타터 리포지토리에서는 스킬이 생성하는 `.watchlist/WATCHLIST.md`를 Git이 ignore해야 합니다. 대상 리포지토리에 ignore 규칙이 없다면 Git이 이를 추적되지 않는 파일로 표시할 수 있으며, 이는 예상된 동작입니다.
 
 설치 가능한 스킬 번들에는 `assets/WATCHLIST.template.md`도 포함되어 있으므로, `.agents/skills/watchlist-md`만 설치된 경우에도 에이전트가 새 WATCHLIST.md를 생성할 수 있습니다.
+
+설치 가능한 스킬 번들에는 `scripts/validate_watchlist.py`도 포함되어, 스킬 디렉토리만 설치해도 검증을 실행할 수 있습니다:
+
+```bash
+python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+```
 
 개인 또는 비공개 워치리스트는 기본적으로 커밋되어서는 안 됩니다. 노트가 작업 공간 전용인 경우 사용자 로컬 무시 규칙을 사용하세요.
 
@@ -136,6 +146,17 @@ cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 
 `agents/openai.yaml` 파일은 Codex UI 메타데이터입니다. 디렉토리와 함께 복사되어도 문제 없습니다.
 
+## Installation For ChatGPT / OpenAI Skills
+
+OpenAI skill surface는 Codex 또는 Claude Code 설치와 자동으로 동기화되지 않습니다. 스킬 번들을 업로드할 때는 스킬 디렉토리 자체가 archive root가 되도록 패키징하세요:
+
+```bash
+cd .agents/skills/watchlist-md
+zip -r watchlist-md-skill.zip SKILL.md assets references scripts agents
+```
+
+생성된 zip을 사용 중인 OpenAI skill 관리 UI 또는 workflow에 업로드하세요. bundled validator는 `scripts/validate_watchlist.py`에 포함되어 있고, repository-level `evals/`는 이 source repo 검증용입니다.
+
 테스트:
 
 ```text
@@ -168,9 +189,10 @@ WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
+python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py
