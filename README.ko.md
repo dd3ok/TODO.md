@@ -200,6 +200,8 @@ python3 evals/check_semantic_cases.py
 
 `evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, `evals/cases/*.json`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다. Semantic case checker는 기대 trigger와 operation 계약을 검증하며, LLM 또는 agent를 실행하지 않습니다.
 
+`--strict-safety`는 의도적으로 보수적입니다. 공유/팀 템플릿에서는 signed URL 또는 tokenized URL처럼 보이는 휴리스틱 결과도 error로 올립니다. false positive는 검토하고, 민감한 링크를 WATCHLIST.md에 복사하기보다 safe pointer를 선호하세요.
+
 ## Example Item
 
 ```md
@@ -219,6 +221,8 @@ python3 evals/check_semantic_cases.py
 ```
 
 `owner`는 다음 명시적인 WATCHLIST 검토 중에 누가 조치해야 하는지를 의미합니다. 이는 어시스턴트가 자동으로 깨어난다는 의미는 아닙니다.
+
+검증기는 모든 필드 키를 요구합니다. 키는 위의 안정적인 순서대로 있어야 하지만, open 항목에서 모든 필드 값이 채워져야 하는 것은 아닙니다. open 항목의 필수 값은 `status`, `priority`, `owner`, `due_at`, `created_at`, `source`, `trigger`, `action`, `done_when`입니다. 알 수 있으면 권장되는 값은 `next_step_on_fail`입니다. 확인 전에는 보통 비워 둡니다: `last_checked_at`, `result`.
 
 완료 처리의 기본 동작은 `status: done`, `last_checked_at`, `result`를 채우고, `## Done` 섹션이 있으면 완료 항목을 그 아래로 이동하는 것입니다. 사용자가 “상태만 바꿔” 또는 “위치 유지”처럼 명시하면 항목을 원래 위치에 둘 수 있습니다.
 

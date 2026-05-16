@@ -3,10 +3,11 @@ name: watchlist-md
 description: >-
   Manages WATCHLIST.md entries for explicit user-requested deferred checks and
   lifecycle updates. Use when the user mentions WATCHLIST.md, a WL-YYYYMMDD-NNN
-  item ID, WATCHLIST.md에 추가, watchlist로 남겨, 후속 체크로 기록, pending
-  result, or asks to record time/event-gated CI, deploy, job, data sync, order,
-  ticket, PR, or email follow-up. Do not trigger for generic reminder/scheduler
-  requests unless the user explicitly asks to record a WATCHLIST.md note.
+  item ID, WATCHLIST.md에 추가, watchlist로 남겨, 후속 체크로 기록, or asks to
+  record a pending result for later review, time/event-gated CI, deploy, job,
+  data sync, order, ticket, PR, or email follow-up. Do not trigger for generic
+  reminder/scheduler requests unless the user explicitly asks to record a
+  WATCHLIST.md note.
   Lifecycle words such as 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, and 아카이브
   apply only when they clearly refer to WATCHLIST.md or a WL-YYYYMMDD-NNN item.
   Records notes only; never schedules reminders or wakeups without an explicitly
@@ -45,8 +46,10 @@ watchlists as workspace artifacts unless the user says they are shared team stat
 ## Add
 
 Add an item only when the user explicitly asks to record a future, time-gated, or
-event-gated check, or has opted into pre-authorized watchlist recording. If the
-task can reasonably be completed now, do that instead.
+event-gated check, or has opted into pre-authorized watchlist recording. Scope
+pre-authorized watchlist recording to the current repo/workspace and active
+workflow unless the user says otherwise. If the task can reasonably be completed
+now, do that instead.
 
 Use this item shape:
 
@@ -57,7 +60,7 @@ Use this item shape:
 - owner: user|assistant_on_review|both|external
 - due_at: YYYY-MM-DDTHH:MM:SS+09:00
 - created_at: YYYY-MM-DDTHH:MM:SS+09:00
-- source: short stable pointer, link, file, PR, issue, or conversation note
+- source: short stable pointer, safe link, file, PR, issue, or conversation note
 - trigger: why this needs a later check
 - action: what to check or do
 - done_when: observable success condition
@@ -66,22 +69,23 @@ Use this item shape:
 - next_step_on_fail:
 ```
 
-Required information: ID, status, due time, owner, action, done condition, and
-source/context. Use `assistant_on_review` when the assistant should help on the
-next explicit review. Treat legacy `owner: agent` as `assistant_on_review`.
+For open items, populate: ID, status, priority, owner, due_at, created_at,
+source, trigger, action, and done_when. Use safe source pointers only; never store
+signed, tokenized, private, or credential-bearing links. Keep last_checked_at and
+result blank until checked. Use `assistant_on_review` for explicit-review help;
+treat legacy `owner: agent` as `assistant_on_review`.
 
-Generate IDs as `WL-YYYYMMDD-NNN` from the creation date in Asia/Seoul unless the
-file or user specifies another timezone. Before writing, re-read WATCHLIST.md and
-choose the next unused sequence for that date. Never overwrite an existing item.
+Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field >
+explicit user timezone > environment/user timezone > Asia/Seoul. Re-read
+WATCHLIST.md before writing, choose the next unused sequence, and never overwrite
+existing items.
 
-Convert relative times to absolute ISO-8601 timestamps with timezone when possible.
-If time is ambiguous, use `due_at: unscheduled` and mention the ambiguity. If the
-resolved time is already in the past, ask whether to record it or use the next
-occurrence; if clarification is unavailable, use `unscheduled`.
+Resolve relative times to ISO-8601 when possible. If ambiguous or already in the
+past and clarification is unavailable, use `due_at: unscheduled` and record the
+ambiguity.
 
-After adding, confirm the item ID, due time, action, done condition, and scheduler
-status. If no scheduler was used, say `scheduler: none` and avoid promising future
-execution.
+After adding, confirm ID, due_at, action, done_when, and scheduler status. If no
+scheduler was used, say `scheduler: none`.
 
 ## Review
 

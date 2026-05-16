@@ -76,8 +76,8 @@ Git history cleanup separately; do not rewrite history unless explicitly asked.
 
 ## ID And Time Rules
 
-- Generate IDs as `WL-YYYYMMDD-NNN` from the creation date in Asia/Seoul by
-  default.
+- Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field >
+  explicit user timezone > environment/user timezone > Asia/Seoul.
 - Use the next `NNN` for that date by reading existing item IDs.
 - Immediately before writing, re-read WATCHLIST.md and scan all existing IDs. If
   the chosen ID already exists, increment `NNN` until an unused ID is found.
