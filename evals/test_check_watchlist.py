@@ -574,12 +574,65 @@ timezone: Asia/Seoul
     def test_skill_runtime_guidance_stays_lean(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         body = text.split("---", 2)[-1]
+        add_section = body.split("## Add", 1)[1].split("## Review", 1)[0]
 
         self.assertLessEqual(len(text.splitlines()), 180)
         self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 900)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", add_section)), 285)
         self.assertIn("references/lifecycle.md", text)
         self.assertIn("references/safety.md", text)
         self.assertLess(text.index("## Add"), text.index("references/lifecycle.md"))
+
+    def test_skill_runtime_polish_markers_stay_precise(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        lifecycle = (SKILL_DIR / "references" / "lifecycle.md").read_text(encoding="utf-8")
+        normalized_text = " ".join(text.split()).lower()
+        normalized_lifecycle = " ".join(lifecycle.split())
+        timezone_precedence = (
+            "Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field "
+            "> explicit user timezone > environment/user timezone > Asia/Seoul."
+        )
+        required_information = (
+            "For open items, populate: ID, status, priority, owner, due_at, "
+            "created_at, source, trigger, action, and done_when."
+        )
+
+        self.assertIn("pending result for later review", text)
+        self.assertNotIn("후속 체크로 기록, pending", text)
+        self.assertIn(
+            "scope pre-authorized watchlist recording to the current repo/workspace",
+            normalized_text,
+        )
+        self.assertIn(
+            "- source: short stable pointer, safe link, file, PR, issue, or conversation note",
+            text,
+        )
+        self.assertIn("due_at", text)
+        self.assertNotIn("due time", text)
+        self.assertIn(required_information, " ".join(text.split()))
+        self.assertNotIn("done condition", text)
+        self.assertIn("confirm ID, due_at, action, done_when, and scheduler status", " ".join(text.split()))
+        self.assertIn("watchlist timezone", normalized_text)
+        self.assertIn("environment/user timezone", normalized_text)
+        self.assertIn(timezone_precedence, " ".join(text.split()))
+        self.assertIn(timezone_precedence, normalized_lifecycle)
+
+    def test_readme_documents_field_and_strict_safety_expectations(self):
+        english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+
+        self.assertIn("The validator requires every field key", english)
+        self.assertIn("Required values for open items", english)
+        self.assertIn("`source`, `trigger`, `action`, and `done_when`", english)
+        self.assertIn("Recommended when known", english)
+        self.assertIn("Normally blank until checked", english)
+        self.assertIn("`--strict-safety` is intentionally conservative", english)
+        self.assertIn("검증기는 모든 필드 키를 요구합니다", korean)
+        self.assertIn("open 항목의 필수 값", korean)
+        self.assertIn("`source`, `trigger`, `action`, `done_when`", korean)
+        self.assertIn("알 수 있으면 권장되는 값", korean)
+        self.assertIn("확인 전에는 보통 비워 둡니다", korean)
+        self.assertIn("`--strict-safety`는 의도적으로 보수적입니다", korean)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [

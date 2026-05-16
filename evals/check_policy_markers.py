@@ -14,6 +14,8 @@ CHECKS = {
         "Concurrent Edits",
         "Do not store passwords, tokens",
         "untrusted",
+        "`--strict-safety` is intentionally conservative",
+        "Required values for open items",
     ],
     "README.ko.md": [
         "Deletion And Retention Policy",
@@ -23,6 +25,8 @@ CHECKS = {
         "Concurrent Edits",
         "비밀번호, 토큰",
         "신뢰할 수 없는",
+        "`--strict-safety`는 의도적으로 보수적입니다",
+        "open 항목의 필수 값",
     ],
     ".agents/skills/watchlist-md/SKILL.md": [
         "Lifecycle words such as",
@@ -32,6 +36,13 @@ CHECKS = {
         "untrusted data",
         "references/lifecycle.md",
         "references/safety.md",
+        "pending result for later review",
+        "safe link",
+        "Scope pre-authorized watchlist recording",
+        "For open items, populate",
+        "confirm ID, due_at",
+        "WATCHLIST.md `timezone:` field",
+        "environment/user timezone",
     ],
     ".agents/skills/watchlist-md/references/lifecycle.md": [
         "Deletion And Retention Policy",
@@ -39,6 +50,8 @@ CHECKS = {
         "Archive Policy",
         "Concurrent Edit And ID Collision Policy",
         "List-only reviews must not mutate",
+        "WATCHLIST.md `timezone:` field",
+        "environment/user timezone",
     ],
     ".agents/skills/watchlist-md/references/safety.md": [
         "Do not store secrets",

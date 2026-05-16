@@ -200,6 +200,8 @@ python3 evals/check_semantic_cases.py
 
 `evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, and `evals/cases/*.json` are a small prompt regression set for manual or automated agent evaluation. The semantic case checker validates the expected trigger and operation contract; it does not run an LLM or agent.
 
+`--strict-safety` is intentionally conservative. It escalates heuristic findings such as signed or tokenized-looking URLs to errors for shared/team templates; review false positives and prefer safe pointers instead of copying sensitive links into WATCHLIST.md.
+
 ## Example Item
 
 ```md
@@ -219,6 +221,8 @@ python3 evals/check_semantic_cases.py
 ```
 
 `owner` means who should act during the next explicit WATCHLIST review. It does not mean the assistant will wake up automatically.
+
+The validator requires every field key in the stable order shown above, but not every field needs a populated value for an open item. Required values for open items are `status`, `priority`, `owner`, `due_at`, `created_at`, `source`, `trigger`, `action`, and `done_when`. Recommended when known: `next_step_on_fail`. Normally blank until checked: `last_checked_at` and `result`.
 
 By default, completing an item sets `status: done`, fills `last_checked_at` and `result`, and moves the item under `## Done` when that section exists. If the user explicitly says to change only the status or keep the item in place, leave the item in its original section.
 
