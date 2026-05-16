@@ -1,0 +1,12 @@
+{
+  "id": "reminder-without-watchlist-kr",
+  "prompt": "내일 9시에 배포 확인하라고 리마인드해줘.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": false,
+  "expected": {
+    "reason": "scheduler/reminder request without explicit WATCHLIST recording intent",
+    "must_not_modify_watchlist": true
+  }
+}

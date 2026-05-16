@@ -565,6 +565,12 @@ timezone: Asia/Seoul
             BUNDLED_VALIDATOR.read_text(encoding="utf-8"),
         )
 
+    def test_validator_has_no_dead_item_only_safety_scanner(self):
+        validator = CHECK_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotIn("def scan_safety(", validator)
+        self.assertIn("def scan_document_safety(", validator)
+
     def test_skill_runtime_guidance_stays_lean(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         body = text.split("---", 2)[-1]
@@ -619,6 +625,7 @@ timezone: Asia/Seoul
         text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
 
         self.assertIn("id: reminder-without-watchlist-en", text)
+        self.assertIn("id: reminder-without-watchlist-kr", text)
         self.assertIn("id: generic-delete-file-en", text)
         self.assertIn("id: check-now-en", text)
         self.assertIn("id: non-watchlist-id-en", text)

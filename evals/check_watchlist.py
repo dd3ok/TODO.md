@@ -364,25 +364,6 @@ def validate_status_rules(result: ValidationResult, watch_id: str, fields: dict[
         require_field_value(result, watch_id, fields, "result", "dropped item")
 
 
-def scan_safety(
-    result: ValidationResult,
-    watch_id: str,
-    fields: dict[str, str],
-    strict_safety: bool,
-) -> None:
-    for field, value in fields.items():
-        for code, (pattern, severity) in SENSITIVE_PATTERNS.items():
-            if re.search(pattern, value, flags=re.I):
-                message = (
-                    f"Potential secret detected in {watch_id} field {field}: {code}.\n"
-                    f"{REDACTION_GUIDANCE}"
-                )
-                if strict_safety:
-                    add_error(result, code, message, watch_id, field, severity="error")
-                else:
-                    add_warning(result, code, message, watch_id, field)
-
-
 def scan_document_safety(result: ValidationResult, text: str, strict_safety: bool) -> None:
     for code, (pattern, severity) in SENSITIVE_PATTERNS.items():
         match = re.search(pattern, text, flags=re.I)
