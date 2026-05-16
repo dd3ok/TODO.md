@@ -106,6 +106,42 @@ cases:
         - open
         - snoozed
         - blocked
+  - id: archive-suggest-policy-kr
+    prompt: "오늘 확인할 WATCHLIST.md 보여줘."
+    expected:
+      mutates_file: false
+      should_suggest_archive: true
+      archive_after_days: 30
+      archive_candidate_statuses:
+        - done
+        - dropped
+      forbidden_statuses:
+        - open
+        - snoozed
+        - blocked
+  - id: archive-manual-no-suggestion-kr
+    prompt: "오늘 확인할 WATCHLIST.md 보여줘."
+    expected:
+      mutates_file: false
+      should_suggest_archive: false
+  - id: list-review-no-mutate-kr
+    prompt: "WATCHLIST.md 목록만 보여줘."
+    expected:
+      mutates_file: false
+      groups:
+        - overdue
+        - due today
+        - upcoming
+        - unscheduled
+  - id: duplicate-id-stop-and-report-kr
+    prompt: "WATCHLIST.md에 추가해줘. 오늘 17:00에 CI 결과 확인."
+    expected:
+      must_reread_before_write: true
+      must_avoid_existing_ids: true
+      on_duplicate_id: stop_and_report
+      must_not:
+        - overwrite_existing_item
+        - rewrite_unrelated_items
   - id: permission-kr-01
     prompt: "WATCHLIST.md에서 결제 관리자 대시보드 확인 필요한 항목만 검토해줘."
     expected:

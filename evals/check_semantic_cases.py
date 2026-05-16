@@ -194,6 +194,30 @@ def validate_add_item(
             f"{', '.join(missing_forbidden)}"
         )
 
+    if "on_duplicate_id" in expected:
+        if expected.get("must_reread_before_write") is not True:
+            errors.append(
+                f"{case_id}: add_item collision contract must set "
+                "must_reread_before_write=true"
+            )
+        if expected.get("must_avoid_existing_ids") is not True:
+            errors.append(
+                f"{case_id}: add_item collision contract must set "
+                "must_avoid_existing_ids=true"
+            )
+        if expected.get("on_duplicate_id") != "stop_and_report":
+            errors.append(
+                f"{case_id}: add_item collision contract must set "
+                "on_duplicate_id=stop_and_report"
+            )
+        must_not = set(expected.get("must_not", []))
+        for forbidden_operation in ["overwrite_existing_item", "rewrite_unrelated_items"]:
+            if forbidden_operation not in must_not:
+                errors.append(
+                    f"{case_id}: add_item collision contract must_not must include "
+                    f"{forbidden_operation}"
+                )
+
 
 def validate_complete_item(
     case_id: str,
@@ -318,11 +342,34 @@ def validate_review_items(
     errors: list[str],
 ) -> None:
     require_keys(expected, {"operation"}, case_id, errors, "expected")
+    if (
+        expected.get("must_not_modify_watchlist") is not None
+        and expected.get("must_not_modify_watchlist") is not True
+    ):
+        errors.append(f"{case_id}: review_items must set must_not_modify_watchlist=true")
     if expected.get("mutates_file") is False:
         groups = set(expected.get("groups", []))
         for group in ["overdue", "due today", "upcoming", "unscheduled"]:
             if group not in groups:
                 errors.append(f"{case_id}: review_items groups must include {group}")
+    if expected.get("should_suggest_archive") is True:
+        if expected.get("must_not_modify_watchlist") is not True:
+            errors.append(
+                f"{case_id}: archive suggestion reviews must set "
+                "must_not_modify_watchlist=true"
+            )
+        if expected.get("archive_after_days") != 30:
+            errors.append(f"{case_id}: archive suggestion reviews must set archive_after_days=30")
+        if set(expected.get("archive_candidate_statuses", [])) != {"done", "dropped"}:
+            errors.append(
+                f"{case_id}: archive suggestion candidates must be done,dropped"
+            )
+        forbidden_statuses = set(expected.get("forbidden_statuses", []))
+        for status in ["open", "snoozed", "blocked"]:
+            if status not in forbidden_statuses:
+                errors.append(
+                    f"{case_id}: archive suggestion forbidden_statuses must include {status}"
+                )
     if expected.get("requires_explicit_authorization"):
         for key in ["requires_configured_access", "should_not_guess_private_state"]:
             if expected.get(key) is not True:

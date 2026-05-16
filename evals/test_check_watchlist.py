@@ -230,6 +230,121 @@ class CheckWatchlistTests(unittest.TestCase):
             "--require-archive-section",
         )
 
+    def test_valid_archive_policy_passes_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: manual\n",
+        )
+
+        result = self.run_check(text, "--strict-format")
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_invalid_archive_policy_fails(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: automatic\n",
+        )
+
+        self.assert_check_fails(text, "INVALID_ARCHIVE_POLICY")
+
+    def test_invalid_archive_after_days_fails(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: suggest\narchive_after_days: 0\n",
+        )
+
+        self.assert_check_fails(text, "INVALID_ARCHIVE_AFTER_DAYS")
+
+    def test_archive_after_days_with_manual_policy_warns_by_default(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: manual\narchive_after_days: 30\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("ARCHIVE_AFTER_DAYS_WITH_MANUAL_POLICY", result.stdout)
+
+    def test_archive_after_days_with_manual_policy_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: manual\narchive_after_days: 30\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "ARCHIVE_AFTER_DAYS_WITH_MANUAL_POLICY",
+            "--strict-format",
+        )
+
+    def test_archive_after_days_without_policy_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_after_days: 30\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "ARCHIVE_AFTER_DAYS_WITHOUT_POLICY",
+            "--strict-format",
+        )
+
+    def test_archive_suggest_without_after_days_warns_by_default(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: suggest\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("ARCHIVE_SUGGEST_WITHOUT_ARCHIVE_AFTER_DAYS", result.stdout)
+
+    def test_archive_suggest_without_after_days_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: suggest\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "ARCHIVE_SUGGEST_WITHOUT_ARCHIVE_AFTER_DAYS",
+            "--strict-format",
+        )
+
+    def test_duplicate_top_level_field_fails(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_policy: manual\narchive_policy: suggest\narchive_after_days: 30\n",
+        )
+
+        self.assert_check_fails(text, "DUPLICATE_TOP_LEVEL_FIELD")
+
+    def test_unknown_top_level_field_warns_by_default(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_polciy: suggest\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("UNKNOWN_TOP_LEVEL_FIELD", result.stdout)
+
+    def test_unknown_top_level_field_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive_polciy: suggest\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "UNKNOWN_TOP_LEVEL_FIELD",
+            "--strict-format",
+        )
+
     def test_strict_safety_rejects_bearer_token(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",
@@ -400,6 +515,7 @@ timezone: Asia/Seoul
                 text = path.read_text(encoding="utf-8")
                 self.assertIn("Example only", text)
                 self.assertIn("### WL-20260514-001", text)
+                self.assertIn("archive_policy: manual", text)
                 self.assertIn("Do not copy the literal ID or timestamps", text)
                 self.assertIn("## Archive", text)
                 self.assertIn("This empty section is only a destination marker", text)
@@ -481,6 +597,53 @@ timezone: Asia/Seoul
         SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": None}}, errors)
 
         self.assertIn("sample-case: prompt could not be parsed from self_checks.yaml", errors)
+
+    def test_semantic_review_archive_suggestion_contract_requires_no_mutation(self):
+        errors = []
+
+        SEMANTIC_CASES.validate_review_items(
+            "archive-suggest-policy-kr",
+            {
+                "operation": "review_items",
+                "should_suggest_archive": True,
+                "archive_after_days": 30,
+                "archive_candidate_statuses": ["done", "dropped"],
+                "forbidden_statuses": ["open", "snoozed", "blocked"],
+            },
+            errors,
+        )
+
+        self.assertIn(
+            "archive-suggest-policy-kr: archive suggestion reviews must set must_not_modify_watchlist=true",
+            errors,
+        )
+
+    def test_semantic_add_item_collision_contract_requires_stop_and_report(self):
+        errors = []
+
+        SEMANTIC_CASES.validate_add_item(
+            "duplicate-id-stop-and-report-kr",
+            {
+                "operation": "add_item",
+                "status": "open",
+                "due_at": "2026-05-15T17:00:00+09:00",
+                "scheduler": "none",
+                "required_fields": ["source", "trigger", "action", "done_when"],
+                "forbidden_response_substrings": sorted(SEMANTIC_CASES.AUTONOMOUS_REMINDER_FORBIDDEN),
+                "on_duplicate_id": "increment",
+                "must_not": ["overwrite_existing_item"],
+            },
+            errors,
+        )
+
+        self.assertIn(
+            "duplicate-id-stop-and-report-kr: add_item collision contract must set must_reread_before_write=true",
+            errors,
+        )
+        self.assertIn(
+            "duplicate-id-stop-and-report-kr: add_item collision contract must set on_duplicate_id=stop_and_report",
+            errors,
+        )
 
 
 if __name__ == "__main__":

@@ -206,6 +206,31 @@ Do not archive automatically. Move old `done` or `dropped` items to `## Archive`
 
 During explicit review, an agent can directly check things the current environment can access, such as GitHub Actions, public PR state, and local tests. Email inboxes, payment systems, admin dashboards, and private internal systems require explicit permission plus the right connector or credentials.
 
+## Archive Policy
+
+The default top-level policy is:
+
+```md
+archive_policy: manual
+```
+
+For long-lived or team-shared watchlists, a repository can opt into review-time archive suggestions:
+
+```md
+archive_policy: suggest
+archive_after_days: 30
+```
+
+This is a review-time suggestion policy only. It does not authorize autonomous archiving or background mutation. During explicit WATCHLIST review, the agent may suggest old `done` or `dropped` archive candidates, but list-only reviews must not mutate WATCHLIST.md. Ask for confirmation before moving items to `## Archive`.
+
+## Concurrent Edits
+
+WATCHLIST.md is a Markdown note, not a transactional database. Concurrent writes can conflict.
+
+Before adding an item, the agent should re-read WATCHLIST.md immediately before writing, scan all existing `WL-YYYYMMDD-NNN` IDs, choose the next unused sequence for the current date, apply the smallest possible edit, and validate the file afterward.
+
+If duplicate IDs are detected, stop and report the collision instead of silently rewriting unrelated items. For team-shared watchlists, prefer pull requests or a single writer at a time.
+
 ## Usage Prompts
 
 ```text
