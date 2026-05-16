@@ -1,0 +1,12 @@
+{
+  "id": "non-watchlist-id-en",
+  "prompt": "The WL-ABC warehouse label is obsolete; delete it.",
+  "locale": "en",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": false,
+  "expected": {
+    "reason": "WL-like text is not a WATCHLIST.md item ID or watchlist context",
+    "must_not_modify_watchlist": true
+  }
+}

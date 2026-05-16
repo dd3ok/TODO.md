@@ -3,9 +3,9 @@ interface:
   short_description: "Track deferred checks and 후속 체크 in WATCHLIST.md"
   default_prompt: >-
     Use $watchlist-md when a user asks to add, review, complete, drop, delete,
-    archive, or check WATCHLIST.md entries, or when the request mentions a WL-*
-    item ID. Generic lifecycle words such as 완료, 삭제, 취소, 드롭, 차단, 연기,
+    archive, or check WATCHLIST.md entries, or when the request mentions a
+    WL-YYYYMMDD-NNN item ID. Generic lifecycle words such as 완료, 삭제, 취소, 드롭, 차단, 연기,
     보관, or 아카이브 should not trigger this skill unless they clearly refer to
-    WATCHLIST.md or a WL-* item. This skill records Markdown notes only; it does
+    WATCHLIST.md or a WL-YYYYMMDD-NNN item. This skill records Markdown notes only; it does
     not schedule reminders, wakeups, or background checks. Do not store secrets,
     signed URLs, raw logs, raw emails, or private dashboard excerpts.

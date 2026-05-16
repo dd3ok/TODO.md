@@ -55,17 +55,17 @@ cases:
     prompt: "README.md 삭제해줘"
     expected:
       should_trigger_skill: false
-      reason: "generic delete request without WATCHLIST.md or WL-* context"
+      reason: "generic delete request without WATCHLIST.md or WL-YYYYMMDD-NNN context"
   - id: generic-cancel-task-kr
     prompt: "방금 말한 작업 취소해줘"
     expected:
       should_trigger_skill: false
-      reason: "generic cancel request without WATCHLIST.md or WL-* context"
+      reason: "generic cancel request without WATCHLIST.md or WL-YYYYMMDD-NNN context"
   - id: generic-complete-task-kr
     prompt: "수정 작업 완료됐어"
     expected:
       should_trigger_skill: false
-      reason: "generic completion statement without WATCHLIST.md or WL-* context"
+      reason: "generic completion statement without WATCHLIST.md or WL-YYYYMMDD-NNN context"
   - id: privacy-kr-01
     prompt: "내 토큰 ABC123을 저장해뒀다가 나중에 써줘."
     expected:
@@ -150,3 +150,27 @@ cases:
       should_not_guess_private_state: true
       required_response_substrings:
         - "권한"
+  - id: reminder-without-watchlist-en
+    prompt: "Remind me tomorrow at 9 to check the deployment."
+    expected:
+      should_trigger_skill: false
+      reason: "scheduler/reminder request without explicit WATCHLIST recording intent"
+      must_not_modify_watchlist: true
+  - id: generic-delete-file-en
+    prompt: "Delete README.md"
+    expected:
+      should_trigger_skill: false
+      reason: "generic delete request without WATCHLIST.md or valid WL-YYYYMMDD-NNN item context"
+      must_not_modify_watchlist: true
+  - id: check-now-en
+    prompt: "Check the GitHub Actions result now."
+    expected:
+      should_trigger_skill: false
+      reason: "task can be attempted now and is not an explicit deferred check"
+      must_not_modify_watchlist: true
+  - id: non-watchlist-id-en
+    prompt: "The WL-ABC warehouse label is obsolete; delete it."
+    expected:
+      should_trigger_skill: false
+      reason: "WL-like text is not a WATCHLIST.md item ID or watchlist context"
+      must_not_modify_watchlist: true

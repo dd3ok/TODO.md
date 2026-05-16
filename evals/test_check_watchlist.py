@@ -11,10 +11,12 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "watchlist-md"
 CHECK_SCRIPT = REPO_ROOT / "evals" / "check_watchlist.py"
 POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
 RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
 SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
+BUNDLED_VALIDATOR = SKILL_DIR / "scripts" / "validate_watchlist.py"
 
 _SEMANTIC_SPEC = importlib.util.spec_from_file_location(
     "check_semantic_cases", SEMANTIC_SCRIPT
@@ -68,6 +70,15 @@ class CheckWatchlistTests(unittest.TestCase):
     def run_script(self, script):
         return subprocess.run(
             [sys.executable, str(script)],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def run_bundled_validator(self, path, *args):
+        return subprocess.run(
+            [sys.executable, str(BUNDLED_VALIDATOR), str(path), *args],
             cwd=REPO_ROOT,
             text=True,
             capture_output=True,
@@ -353,6 +364,22 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails_with_args(text, "Potential secret detected", "--strict-safety")
 
+    def test_strict_safety_rejects_secret_in_comment(self):
+        text = VALID_WATCHLIST.replace(
+            "## Open\n",
+            "<!-- Authorization: Bearer ghp_123456789012345678901234567890123456 -->\n## Open\n",
+        )
+
+        self.assert_check_fails_with_args(text, "AUTHORIZATION_HEADER", "--strict-safety")
+
+    def test_strict_safety_rejects_raw_response_headers(self):
+        text = VALID_WATCHLIST.replace(
+            "- source: GitHub Actions run for PR #12",
+            "- source: response headers from private API",
+        )
+
+        self.assert_check_fails_with_args(text, "RAW_PRIVATE_EXCERPT", "--strict-safety")
+
     def test_strict_safety_rejects_signed_url(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",
@@ -499,15 +526,59 @@ timezone: Asia/Seoul
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
     def test_bundled_template_does_not_mark_live_mode_template(self):
-        template = REPO_ROOT / ".agents" / "skills" / "watchlist-md" / "assets" / "WATCHLIST.template.md"
+        template = SKILL_DIR / "assets" / "WATCHLIST.template.md"
         text = template.read_text(encoding="utf-8")
 
         self.assertNotIn("mode: template", text)
 
+    def test_installable_skill_bundle_contains_runtime_resources(self):
+        expected_files = [
+            SKILL_DIR / "SKILL.md",
+            SKILL_DIR / "assets" / "WATCHLIST.template.md",
+            SKILL_DIR / "references" / "self-checks.md",
+            SKILL_DIR / "references" / "lifecycle.md",
+            SKILL_DIR / "references" / "safety.md",
+            BUNDLED_VALIDATOR,
+            SKILL_DIR / "agents" / "openai.yaml",
+        ]
+
+        for path in expected_files:
+            with self.subTest(path=path):
+                self.assertTrue(path.is_file(), f"missing bundled resource: {path}")
+
+    def test_bundled_validator_can_validate_template_without_repo_evals(self):
+        template = SKILL_DIR / "assets" / "WATCHLIST.template.md"
+
+        result = self.run_bundled_validator(
+            template,
+            "--strict-format",
+            "--strict-safety",
+            "--require-archive-section",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("validation passed", result.stdout)
+
+    def test_bundled_validator_matches_repo_validator(self):
+        self.assertEqual(
+            CHECK_SCRIPT.read_text(encoding="utf-8"),
+            BUNDLED_VALIDATOR.read_text(encoding="utf-8"),
+        )
+
+    def test_skill_runtime_guidance_stays_lean(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        body = text.split("---", 2)[-1]
+
+        self.assertLessEqual(len(text.splitlines()), 180)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 900)
+        self.assertIn("references/lifecycle.md", text)
+        self.assertIn("references/safety.md", text)
+        self.assertLess(text.index("## Add"), text.index("references/lifecycle.md"))
+
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [
-            REPO_ROOT / ".agents" / "skills" / "watchlist-md" / "assets" / "WATCHLIST.template.md",
-            REPO_ROOT / ".watchlist" / "WATCHLIST.md",
+            SKILL_DIR / "assets" / "WATCHLIST.template.md",
+            REPO_ROOT / "examples" / "WATCHLIST.example.md",
         ]
 
         for path in paths:
@@ -524,6 +595,13 @@ timezone: Asia/Seoul
 
                 self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
+    def test_generated_repo_watchlist_is_gitignored_by_default(self):
+        gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+
+        self.assertIn(".watchlist/*", gitignore)
+        self.assertIn("!.watchlist/.gitkeep", gitignore)
+        self.assertTrue((REPO_ROOT / ".watchlist" / ".gitkeep").is_file())
+
     def test_self_checks_include_lifecycle_cases(self):
         text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
 
@@ -536,6 +614,14 @@ timezone: Asia/Seoul
         self.assertIn("id: delete-kr-01", text)
         self.assertIn("id: archive-kr-01", text)
         self.assertIn("id: permission-kr-01", text)
+
+    def test_self_checks_include_broad_negative_trigger_cases(self):
+        text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("id: reminder-without-watchlist-en", text)
+        self.assertIn("id: generic-delete-file-en", text)
+        self.assertIn("id: check-now-en", text)
+        self.assertIn("id: non-watchlist-id-en", text)
 
     def test_self_checks_case_ids_match_prompts_csv(self):
         with (REPO_ROOT / "evals" / "prompts.csv").open(encoding="utf-8", newline="") as fh:
