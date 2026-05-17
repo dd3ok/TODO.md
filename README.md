@@ -173,6 +173,10 @@ Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.
 - Records deferred checks for later review.
 - Does not schedule, wake up, notify, or execute automatically unless a separate scheduler or automation tool is explicitly available and used.
 
+External schedulers such as cron can be useful for prompting periodic explicit
+reviews of `WATCHLIST.md`, but they must stay outside this skill and must not
+mutate items, run checks, or promise autonomous wakeups.
+
 ## Non-goals
 
 `WATCHLIST.md` does not:
