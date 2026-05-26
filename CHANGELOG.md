@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.1] - 2026-05-27
+
+### Changed
+
+- Clarified that stable WATCHLIST field keys and enum values stay in English
+  for localized entries while titles and free-text values may be localized.
+- Lightened README safety and retention guidance without changing runtime
+  behavior.
+
+### Fixed
+
+- Scoped Korean localized schema-token regression checks to Korean semantic
+  cases so future locales can add their own localized-token rules.
+
 ## [0.4.0] - 2026-05-26
 
 ### Added
