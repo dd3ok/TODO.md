@@ -42,8 +42,8 @@ privacy/scope:
 3. Use an existing `.watchlist/WATCHLIST.md` for local/private repo-scoped notes.
 4. When creating a new repo-scoped watchlist without shared/team intent, prefer
    `.watchlist/WATCHLIST.md`.
-5. Use `$HOME/.watchlist/WATCHLIST.md` for personal, private, or repo-independent
-   items.
+5. Use `$HOME/.watchlist/WATCHLIST.md` only for explicitly personal,
+   repo-independent items.
 
 If both root and `.watchlist/` files exist, mention both during review. For new
 writes, do not silently choose unless the target is clear: shared/project items

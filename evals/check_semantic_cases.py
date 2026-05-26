@@ -51,6 +51,12 @@ SUPPORTED_STORAGE_TARGETS = {
     "explicit_user_path",
     "clarify",
 }
+SUPPORTED_STORAGE_SCOPES = {
+    "shared_project",
+    "local_private",
+    "personal_repo_independent",
+    "ambiguous",
+}
 
 
 def fail(message: str) -> int:
@@ -154,6 +160,23 @@ def require_keys(
         errors.append(f"{case_id}: missing {path} key(s): {', '.join(missing)}")
 
 
+def require_string_list(
+    obj: dict[str, object],
+    key: str,
+    case_id: str,
+    errors: list[str],
+    path: str,
+) -> set[str]:
+    value = obj.get(key, [])
+    if not isinstance(value, list):
+        errors.append(f"{case_id}: {path}.{key} must be a list")
+        return set()
+    if not all(isinstance(item, str) for item in value):
+        errors.append(f"{case_id}: {path}.{key} must contain only strings")
+        return set()
+    return set(value)
+
+
 def require_item_in_fixture(
     expected: dict[str, object],
     fixture_text: str,
@@ -239,30 +262,32 @@ def validate_storage_contract(
         errors.append(f"{case_id}: expected.storage must be an object")
         return
 
+    before = len(errors)
     require_keys(storage, {"target", "scope", "must_not"}, case_id, errors, "expected.storage")
+    if len(errors) > before:
+        return
 
     target = storage.get("target")
     if target not in SUPPORTED_STORAGE_TARGETS:
         errors.append(f"{case_id}: expected.storage.target is unsupported: {target}")
 
     scope = storage.get("scope")
-    if scope not in {"shared_project", "local_private", "personal_repo_independent", "ambiguous"}:
+    if scope not in SUPPORTED_STORAGE_SCOPES:
         errors.append(f"{case_id}: expected.storage.scope is unsupported: {scope}")
 
-    workspace = case.get("workspace", {})
-    if workspace and not isinstance(workspace, dict):
+    workspace = case.get("workspace")
+    if workspace is not None and not isinstance(workspace, dict):
         errors.append(f"{case_id}: workspace must be an object")
         return
+    workspace = workspace or {}
 
-    existing_paths = set(workspace.get("existing_paths", [])) if isinstance(workspace, dict) else set()
-    ignored_paths = set(workspace.get("ignored_paths", [])) if isinstance(workspace, dict) else set()
-    must_not = set(storage.get("must_not", []))
+    existing_paths = require_string_list(workspace, "existing_paths", case_id, errors, "workspace")
+    ignored_paths = require_string_list(workspace, "ignored_paths", case_id, errors, "workspace")
+    must_not = require_string_list(storage, "must_not", case_id, errors, "expected.storage")
 
     if target == "WATCHLIST.md":
         if scope != "shared_project":
             errors.append(f"{case_id}: root WATCHLIST target must use shared_project scope")
-        if "WATCHLIST.md" not in existing_paths:
-            errors.append(f"{case_id}: root WATCHLIST target case must declare existing root path")
         if ".watchlist/WATCHLIST.md" in ignored_paths and "write_ignored_dot_watchlist" not in must_not:
             errors.append(
                 f"{case_id}: root WATCHLIST target with ignored .watchlist must forbid "

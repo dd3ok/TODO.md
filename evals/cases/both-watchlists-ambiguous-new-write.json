@@ -1,6 +1,6 @@
 {
   "id": "both-watchlists-ambiguous-new-write",
-  "prompt": "WATCHLIST.md에 추가해줘. 오늘 17:00에 배포 결과 확인.",
+  "prompt": "watchlist에 추가해줘. 오늘 17:00에 배포 결과 확인.",
   "locale": "ko",
   "fixed_now": "2026-05-14T16:30:00+09:00",
   "fixture": "empty.watchlist.md",

@@ -51,6 +51,10 @@ evals/
 
 `.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `examples/WATCHLIST.example.md`는 이 리포지토리의 시작용 예시 파일이며, 생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 ignore됩니다.
 
+## 설치 철학
+
+`watchlist-md`는 실제로 주로 사용하는 에이전트 런타임에 설치하세요. 기본적으로 모든 런타임에 같은 스킬을 복사하지 마세요. 중복 설치는 drift를 만들 수 있습니다. 리포지토리에는 보통 런타임별 스킬 사본이 아니라 워치리스트 데이터만 둡니다. 직접 사용하는 런타임에만 `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` 같은 짧은 포인터를 추가하세요.
+
 ## Installation For Codex
 
 이 리포지토리 루트는 스타터 리포입니다. 실제 스킬 디렉토리는 다음과 같습니다:
@@ -70,8 +74,6 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 새 파일을 만들기 전에 기존 워치리스트 convention을 존중해야 합니다. 공유/프로젝트 상태는 루트 `WATCHLIST.md`를 사용하고, 로컬/비공개 또는 리포지토리와 무관한 개인 노트는 `.watchlist/WATCHLIST.md` 또는 `$HOME/.watchlist/WATCHLIST.md`를 사용하세요.
 
 이 스타터 리포지토리에서는 스킬이 생성하는 `.watchlist/WATCHLIST.md`를 Git이 ignore해야 합니다. 대상 리포지토리에 ignore 규칙이 없다면 Git이 이를 추적되지 않는 파일로 표시할 수 있으며, 이는 예상된 동작입니다.
-
-`watchlist-md`는 실제로 주로 사용하는 에이전트 런타임에 설치하세요. 기본적으로 모든 런타임에 같은 스킬을 복사하지 마세요. 중복 설치는 drift를 만들 수 있습니다. 리포지토리에는 보통 런타임별 스킬 사본이 아니라 워치리스트 데이터만 둡니다. 직접 사용하는 런타임에만 `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` 같은 짧은 포인터를 추가하세요.
 
 설치 가능한 스킬 번들에는 `assets/WATCHLIST.template.md`도 포함되어 있으므로, `.agents/skills/watchlist-md`만 설치된 경우에도 에이전트가 새 WATCHLIST.md를 생성할 수 있습니다.
 

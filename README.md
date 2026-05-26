@@ -51,6 +51,10 @@ evals/
 
 Files under `.agents/skills/watchlist-md/` are bundled together when installing the skill directory. The root `examples/WATCHLIST.example.md` file is this repository's starter example; generated `.watchlist/WATCHLIST.md` files are ignored by default.
 
+## Installation Philosophy
+
+Install `watchlist-md` in the primary agent runtime you actually use. Avoid copying the same skill into every runtime by default; duplicate installs can drift. Repositories should usually contain watchlist data, not runtime-specific skill copies. Add short `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` pointers only when direct runtime use needs the convention.
+
 ## Installation For Codex
 
 This repository root is a starter repo. The actual skill directory is:
@@ -70,8 +74,6 @@ Restart Codex after installation so the new skill is detected.
 This repository keeps the starter artifact at `examples/WATCHLIST.example.md`. In target repositories, the skill should respect existing watchlist conventions before creating a new file. Use a root `WATCHLIST.md` for shared/project state and `.watchlist/WATCHLIST.md` or `$HOME/.watchlist/WATCHLIST.md` for local, private, or repo-independent notes.
 
 When the skill creates `.watchlist/WATCHLIST.md`, Git should ignore it in this starter repository. In target repositories without an ignore rule, Git may show it as an untracked file; that is expected.
-
-Install `watchlist-md` in the primary agent runtime you actually use. Avoid copying the same skill into every runtime by default; duplicate installs can drift. Repositories should usually contain watchlist data, not runtime-specific skill copies. Add short `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` pointers only when direct runtime use needs the convention.
 
 The installable skill bundle also includes `assets/WATCHLIST.template.md`, so an agent can create a new WATCHLIST.md even when only `.agents/skills/watchlist-md` is installed.
 

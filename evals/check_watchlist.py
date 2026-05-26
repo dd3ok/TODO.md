@@ -419,7 +419,7 @@ def validate(text: str, path: str, options: ValidationOptions) -> ValidationResu
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate WATCHLIST.md structure and safety.")
-    parser.add_argument("path", nargs="?", default="WATCHLIST.md")
+    parser.add_argument("path", nargs="?", default=".watchlist/WATCHLIST.md")
     parser.add_argument("--strict-format", action="store_true")
     parser.add_argument("--strict-safety", action="store_true")
     parser.add_argument("--require-archive-section", action="store_true")

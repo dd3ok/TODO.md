@@ -32,5 +32,5 @@ Use these prompts when validating changes to this skill.
     - Expected: uses the existing root `WATCHLIST.md` for the shared/project-scoped item and does not write the item to an ignored `.watchlist/WATCHLIST.md`.
 15. `개인 로컬 메모로 watchlist에 남겨. 오늘 18:00에 내 테스트 로그 확인.`
     - Expected: uses `.watchlist/WATCHLIST.md` for the explicitly local/private repo-scoped item and does not mix the private note into shared root state.
-16. `WATCHLIST.md에 추가해줘. 오늘 17:00에 배포 결과 확인.`
+16. `watchlist에 추가해줘. 오늘 17:00에 배포 결과 확인.`
     - Expected: when both root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` already exist and scope is unclear, mentions the split and avoids mutating either file until the target is clear.
