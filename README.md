@@ -279,7 +279,7 @@ Mark WL-20260507-001 done. CI is all passing.
 
 ## Safety And Retention
 
-Preserve WATCHLIST.md history by marking items `done` or `dropped` instead of removing them. Hard-delete an item only when the user explicitly asks for record removal or when sensitive data must be removed.
+Preserve WATCHLIST.md history by marking items `done` or `dropped` instead of removing them. Hard-delete or redact content only when the user explicitly asks for record removal or when sensitive data must be removed.
 
 - Do not store passwords, tokens, cookies, private keys, signed or tokenized URLs, sensitive personal data, raw logs, raw emails, or private excerpts.
 - Store stable pointers such as "check deployment dashboard run 123" or "review support ticket ABC-123" instead of secrets or private content.
