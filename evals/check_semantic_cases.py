@@ -195,6 +195,7 @@ def validate_add_item(
     case_id: str,
     expected: dict[str, object],
     errors: list[str],
+    locale: object = None,
 ) -> None:
     require_keys(
         expected,
@@ -247,6 +248,92 @@ def validate_add_item(
                     f"{case_id}: add_item collision contract must_not must include "
                     f"{forbidden_operation}"
                 )
+
+    validate_schema_tokens(case_id, locale, expected, errors)
+
+
+def validate_schema_tokens(
+    case_id: str,
+    locale: object,
+    expected: dict[str, object],
+    errors: list[str],
+) -> None:
+    schema_tokens = expected.get("schema_tokens")
+    if schema_tokens is None:
+        return
+    if not isinstance(schema_tokens, dict):
+        errors.append(f"{case_id}: expected.schema_tokens must be an object")
+        return
+
+    require_keys(
+        schema_tokens,
+        {
+            "must_use_field_keys",
+            "must_use_enum_values",
+            "must_not_use_localized_schema_tokens",
+        },
+        case_id,
+        errors,
+        "expected.schema_tokens",
+    )
+    field_keys = require_string_list(
+        schema_tokens,
+        "must_use_field_keys",
+        case_id,
+        errors,
+        "expected.schema_tokens",
+    )
+    enum_values = require_string_list(
+        schema_tokens,
+        "must_use_enum_values",
+        case_id,
+        errors,
+        "expected.schema_tokens",
+    )
+    localized_tokens = require_string_list(
+        schema_tokens,
+        "must_not_use_localized_schema_tokens",
+        case_id,
+        errors,
+        "expected.schema_tokens",
+    )
+
+    required_field_keys = {
+        "schema_version",
+        "automation",
+        "timezone",
+        "status",
+        "priority",
+        "owner",
+        "due_at",
+        "created_at",
+        "source",
+        "trigger",
+        "action",
+        "done_when",
+        "last_checked_at",
+        "result",
+        "next_step_on_fail",
+    }
+    missing_field_keys = sorted(required_field_keys - field_keys)
+    if missing_field_keys:
+        errors.append(
+            f"{case_id}: schema_tokens.must_use_field_keys missing "
+            f"{', '.join(missing_field_keys)}"
+        )
+
+    if not {"open", "P1", "assistant_on_review"}.issubset(enum_values):
+        errors.append(
+            f"{case_id}: schema_tokens.must_use_enum_values must include "
+            "open, P1, and assistant_on_review"
+        )
+    if locale != "ko":
+        return
+    if not {"상태", "우선순위", "담당자", "기한", "열림"}.issubset(localized_tokens):
+        errors.append(
+            f"{case_id}: schema_tokens.must_not_use_localized_schema_tokens "
+            "must include 상태, 우선순위, 담당자, 기한, and 열림"
+        )
 
 
 def validate_storage_contract(
@@ -537,7 +624,7 @@ def validate_case(
         return
 
     if operation == "add_item":
-        validate_add_item(case_id, expected, errors)
+        validate_add_item(case_id, expected, errors, case.get("locale"))
     elif operation == "archive_items":
         validate_archive_items(case_id, expected, errors)
     elif operation == "complete_item":

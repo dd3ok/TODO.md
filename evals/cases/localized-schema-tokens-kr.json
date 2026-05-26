@@ -1,0 +1,65 @@
+{
+  "id": "localized-schema-tokens-kr",
+  "prompt": "한국어로 작성하되 WATCHLIST.md에 추가해줘. 오늘 17:00에 CI 확인.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "empty.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "add_item",
+    "status": "open",
+    "due_at": "2026-05-14T17:00:00+09:00",
+    "scheduler": "none",
+    "required_fields": [
+      "source",
+      "trigger",
+      "action",
+      "done_when"
+    ],
+    "forbidden_response_substrings": [
+      "I'll remind you",
+      "I will remind you",
+      "I'll check later",
+      "I will check later",
+      "자동으로 알려드릴게요",
+      "제가 나중에 확인할게요"
+    ],
+    "schema_tokens": {
+      "must_use_field_keys": [
+        "schema_version",
+        "automation",
+        "timezone",
+        "status",
+        "priority",
+        "owner",
+        "due_at",
+        "created_at",
+        "source",
+        "trigger",
+        "action",
+        "done_when",
+        "last_checked_at",
+        "result",
+        "next_step_on_fail"
+      ],
+      "must_use_enum_values": [
+        "open",
+        "P1",
+        "assistant_on_review"
+      ],
+      "must_not_use_localized_schema_tokens": [
+        "상태",
+        "우선순위",
+        "담당자",
+        "기한",
+        "생성일",
+        "출처",
+        "계기",
+        "작업",
+        "완료조건",
+        "열림",
+        "어시스턴트"
+      ]
+    }
+  }
+}

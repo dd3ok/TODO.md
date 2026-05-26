@@ -77,11 +77,12 @@ Use this item shape:
 - next_step_on_fail:
 ```
 
-For open items, populate: ID, status, priority, owner, due_at, created_at,
-source, trigger, action, and done_when. Use safe source pointers only; never store
-signed, tokenized, private, or credential-bearing links. Keep last_checked_at and
-result blank until checked. Use `assistant_on_review` for explicit-review help;
-treat legacy `owner: agent` as `assistant_on_review`.
+For open items, keep field keys and enum values in English; populate: ID,
+status, priority, owner, due_at, created_at, source, trigger, action, and
+done_when. Localize only titles and free-text values. Use safe pointers; never
+store signed, tokenized, private, or credential-bearing links. Keep
+last_checked_at and result blank until checked. Use `assistant_on_review` for
+explicit-review help; treat legacy `owner: agent` as `assistant_on_review`.
 
 Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field >
 explicit user timezone > environment/user timezone > Asia/Seoul. Re-read
