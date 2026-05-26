@@ -16,6 +16,6 @@ Score each run on these checks:
 For file-level validation, run:
 
 ```bash
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md
+python3 evals/check_watchlist.py <path-to-selected-WATCHLIST.md>
 python3 evals/check_semantic_cases.py
 ```
