@@ -20,6 +20,49 @@ cases:
         - trigger
         - action
         - done_when
+  - id: localized-schema-tokens-kr
+    prompt: "한국어로 작성하되 WATCHLIST.md에 추가해줘. 오늘 17:00에 CI 확인."
+    expected:
+      status: open
+      due_at: "2026-05-14T17:00:00+09:00"
+      required_fields:
+        - source
+        - trigger
+        - action
+        - done_when
+      schema_tokens:
+        must_use_field_keys:
+          - schema_version
+          - automation
+          - timezone
+          - status
+          - priority
+          - owner
+          - due_at
+          - created_at
+          - source
+          - trigger
+          - action
+          - done_when
+          - last_checked_at
+          - result
+          - next_step_on_fail
+        must_use_enum_values:
+          - open
+          - P1
+          - assistant_on_review
+        must_not_use_localized_schema_tokens:
+          - 상태
+          - 우선순위
+          - 담당자
+          - 기한
+          - 생성일
+          - 출처
+          - 계기
+          - 작업
+          - 완료조건
+          - 열림
+          - 어시스턴트
   - id: add-kr-02
     prompt: "배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해."
     expected:

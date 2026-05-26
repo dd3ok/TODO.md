@@ -593,8 +593,9 @@ timezone: Asia/Seoul
             "> explicit user timezone > environment/user timezone > Asia/Seoul."
         )
         required_information = (
-            "For open items, populate: ID, status, priority, owner, due_at, "
-            "created_at, source, trigger, action, and done_when."
+            "For open items, keep field keys and enum values in English; "
+            "populate: ID, status, priority, owner, due_at, created_at, source, "
+            "trigger, action, and done_when."
         )
 
         self.assertIn("pending result for later review", text)
@@ -610,6 +611,7 @@ timezone: Asia/Seoul
         self.assertIn("due_at", text)
         self.assertNotIn("due time", text)
         self.assertIn(required_information, " ".join(text.split()))
+        self.assertIn("Localize only titles and free-text values", " ".join(text.split()))
         self.assertNotIn("done condition", text)
         self.assertIn("confirm ID, due_at, action, done_when, and scheduler status", " ".join(text.split()))
         self.assertIn("watchlist timezone", normalized_text)

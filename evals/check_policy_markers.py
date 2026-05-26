@@ -41,7 +41,7 @@ CHECKS = {
         "pending result for later review",
         "safe link",
         "Scope pre-authorized watchlist recording",
-        "For open items, populate",
+        "keep field keys and enum values in English",
         "confirm ID, due_at",
         "WATCHLIST.md `timezone:` field",
         "environment/user timezone",
