@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.0] - 2026-05-26
+
+### Added
+
+- Semantic storage cases for root/shared, `.watchlist`/private, and ambiguous
+  split-watchlist scenarios.
+- Negative trigger cases for scheduler/reminder requests that do not explicitly
+  ask for WATCHLIST.md recording.
+- Bundled standalone validator guidance for installed skill directory checks.
+
+### Changed
+
+- Clarified storage selection around explicit user intent, existing project
+  convention, and shared/private scope.
+- Slimmed runtime instructions and kept lifecycle/safety details in references.
+- Updated README guidance to recommend installing the skill in the primary agent
+  runtime and keeping repositories focused on watchlist data.
+- Moved starter watchlist content to `examples/WATCHLIST.example.md` and kept
+  generated `.watchlist/WATCHLIST.md` files ignored by default.
+
 ## [0.3.0] - 2026-05-15
 
 ### Added
