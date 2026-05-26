@@ -33,15 +33,23 @@ worker.
 
 ## Storage
 
-Prefer the first appropriate path:
+Choose the target by explicit user intent, existing project convention, and
+privacy/scope:
 
-1. `.watchlist/WATCHLIST.md` at the repository root
-2. `WATCHLIST.md` at the workspace root
-3. `$HOME/.watchlist/WATCHLIST.md` for explicitly personal, repo-independent items
+1. Use an explicit WATCHLIST path if the user names one.
+2. Use an existing repo/workspace `WATCHLIST.md` for shared or project-scoped
+   follow-ups.
+3. Use an existing `.watchlist/WATCHLIST.md` for local/private repo-scoped notes.
+4. When creating a new repo-scoped watchlist without shared/team intent, prefer
+   `.watchlist/WATCHLIST.md`.
+5. Use `$HOME/.watchlist/WATCHLIST.md` for personal, private, or repo-independent
+   items.
 
-Create the file if needed. Use `assets/WATCHLIST.template.md` when bundled. Append
-or minimally update entries; do not rewrite unrelated content. Treat repo-local
-watchlists as workspace artifacts unless the user says they are shared team state.
+If both root and `.watchlist/` files exist, mention both during review. For new
+writes, do not silently choose unless the target is clear: shared/project items
+belong in root `WATCHLIST.md`; private/local items belong in `.watchlist/` or
+`$HOME`. Create the selected file if needed. Use `assets/WATCHLIST.template.md`
+when bundled. Append or minimally update entries; do not rewrite unrelated content.
 
 ## Add
 

@@ -6,13 +6,13 @@
 
 [Korean README](README.ko.md)
 
-`WATCHLIST.md` is a lightweight **AI Agent Skill** for recording deferred checks and follow-up checks in a repository-local `WATCHLIST.md` file. It supports Codex, Claude Code, and other AI agent workflows by writing pending follow-ups into `.watchlist/WATCHLIST.md` in a consistent Markdown format. It is not an autonomous scheduler, reminder service, daemon, database, cron job, or UI.
+`WATCHLIST.md` is a lightweight **AI Agent Skill** for recording deferred checks and follow-up checks in a repository-local or personal watchlist file. It supports Codex, Claude Code, and other AI agent workflows by writing pending follow-ups in a consistent Markdown format while respecting existing project conventions. It is not an autonomous scheduler, reminder service, daemon, database, cron job, or UI.
 
 ## Problem & Solution
 
 **Problem**: During long-running work or overlapping task streams, AI agents can easily lose track of things that need to be checked later, such as CI, deployments, pending replies, or background jobs.
 
-**Solution**: `WATCHLIST.md` records follow-up checks as structured Markdown in `.watchlist/WATCHLIST.md`. Context remains in the repository after a session ends, so the next review can pick up where the previous one left off.
+**Solution**: `WATCHLIST.md` records follow-up checks as structured Markdown in the selected repo-local or personal watchlist file. Context remains available after a session ends, so the next review can pick up where the previous one left off.
 
 ## Quickstart
 
@@ -67,9 +67,11 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 Restart Codex after installation so the new skill is detected.
 
-This repository keeps the starter artifact at `examples/WATCHLIST.example.md`. In target repositories, a repository-local watchlist is normally a personal workspace note. If the file does not exist, the skill should create it when needed.
+This repository keeps the starter artifact at `examples/WATCHLIST.example.md`. In target repositories, the skill should respect existing watchlist conventions before creating a new file. Use a root `WATCHLIST.md` for shared/project state and `.watchlist/WATCHLIST.md` or `$HOME/.watchlist/WATCHLIST.md` for local, private, or repo-independent notes.
 
 When the skill creates `.watchlist/WATCHLIST.md`, Git should ignore it in this starter repository. In target repositories without an ignore rule, Git may show it as an untracked file; that is expected.
+
+Install `watchlist-md` in the primary agent runtime you actually use. Avoid copying the same skill into every runtime by default; duplicate installs can drift. Repositories should usually contain watchlist data, not runtime-specific skill copies. Add short `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` pointers only when direct runtime use needs the convention.
 
 The installable skill bundle also includes `assets/WATCHLIST.template.md`, so an agent can create a new WATCHLIST.md even when only `.agents/skills/watchlist-md` is installed.
 

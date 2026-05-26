@@ -150,6 +150,28 @@ cases:
       should_not_guess_private_state: true
       required_response_substrings:
         - "권한"
+  - id: existing-root-watchlist-shared-followup
+    prompt: "WATCHLIST.md에 추가해줘. 이 PR CI 결과를 팀 워치리스트에서 오늘 17:00에 확인."
+    expected:
+      storage_target: "WATCHLIST.md"
+      storage_scope: shared_project
+      must_not:
+        - write_ignored_dot_watchlist
+  - id: existing-dot-watchlist-private-followup
+    prompt: "개인 로컬 메모로 watchlist에 남겨. 오늘 18:00에 내 테스트 로그 확인."
+    expected:
+      storage_target: ".watchlist/WATCHLIST.md"
+      storage_scope: local_private
+      must_not:
+        - write_shared_state_to_private_watchlist
+  - id: both-watchlists-ambiguous-new-write
+    prompt: "WATCHLIST.md에 추가해줘. 오늘 17:00에 배포 결과 확인."
+    expected:
+      storage_target: clarify
+      storage_scope: ambiguous
+      must_not:
+        - silently_choose_path
+        - mutate_before_target_is_clear
   - id: reminder-without-watchlist-en
     prompt: "Remind me tomorrow at 9 to check the deployment."
     expected:
