@@ -6,13 +6,13 @@
 
 [English README](README.md)
 
-`WATCHLIST.md`는 리포지토리 로컬 `WATCHLIST.md` 파일에 후속 확인 사항을 기록하기 위한 경량 **AI 에이전트 스킬(AI Agent Skill)**입니다. 이 스킬은 자율 스케줄러, 알림 서비스, 데몬, 데이터베이스, 크론 작업 또는 UI가 아닙니다. 대신 AI 에이전트 또는 사용자가 보류 중인 확인 사항을 일관된 형식으로 `.watchlist/WATCHLIST.md`에 작성하여 놓치지 않도록 돕습니다.
+`WATCHLIST.md`는 리포지토리 로컬 또는 개인 워치리스트 파일에 후속 확인 사항을 기록하기 위한 경량 **AI 에이전트 스킬(AI Agent Skill)**입니다. 이 스킬은 자율 스케줄러, 알림 서비스, 데몬, 데이터베이스, 크론 작업 또는 UI가 아닙니다. 대신 AI 에이전트 또는 사용자가 보류 중인 확인 사항을 기존 프로젝트 convention을 존중하는 일관된 Markdown 형식으로 남겨 놓치지 않도록 돕습니다.
 
 ## Problem & Solution
 
 **문제**: 긴 작업이나 여러 흐름이 겹치면 AI 에이전트가 나중에 확인해야 할 CI, 배포, 응답 대기 같은 항목을 놓치기 쉽습니다.
 
-**해결책**: `WATCHLIST.md`는 후속 확인 사항을 구조화된 Markdown으로 `.watchlist/WATCHLIST.md`에 기록합니다. 세션이 끝나도 컨텍스트가 리포지토리에 남아, 다음 검토 때 이어서 확인할 수 있습니다.
+**해결책**: `WATCHLIST.md`는 후속 확인 사항을 선택된 리포지토리 로컬 또는 개인 워치리스트 파일에 구조화된 Markdown으로 기록합니다. 세션이 끝나도 컨텍스트가 남아, 다음 검토 때 이어서 확인할 수 있습니다.
 
 ## Quickstart
 
@@ -51,6 +51,10 @@ evals/
 
 `.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `examples/WATCHLIST.example.md`는 이 리포지토리의 시작용 예시 파일이며, 생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 ignore됩니다.
 
+## 설치 철학
+
+`watchlist-md`는 실제로 주로 사용하는 에이전트 런타임에 설치하세요. 기본적으로 모든 런타임에 같은 스킬을 복사하지 마세요. 중복 설치는 drift를 만들 수 있습니다. 리포지토리에는 보통 런타임별 스킬 사본이 아니라 워치리스트 데이터만 둡니다. 직접 사용하는 런타임에만 `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` 같은 짧은 포인터를 추가하세요.
+
 ## Installation For Codex
 
 이 리포지토리 루트는 스타터 리포입니다. 실제 스킬 디렉토리는 다음과 같습니다:
@@ -67,7 +71,7 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 새 스킬이 인식되도록 설치 후 Codex를 다시 시작하세요.
 
-이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 리포지토리 로컬 워치리스트가 기본적으로 개인 작업 공간 노트입니다. 파일이 없으면 스킬은 필요할 때 파일을 생성해야 합니다.
+이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 새 파일을 만들기 전에 기존 워치리스트 convention을 존중해야 합니다. 공유/프로젝트 상태는 루트 `WATCHLIST.md`를 사용하고, 로컬/비공개 또는 리포지토리와 무관한 개인 노트는 `.watchlist/WATCHLIST.md` 또는 `$HOME/.watchlist/WATCHLIST.md`를 사용하세요.
 
 이 스타터 리포지토리에서는 스킬이 생성하는 `.watchlist/WATCHLIST.md`를 Git이 ignore해야 합니다. 대상 리포지토리에 ignore 규칙이 없다면 Git이 이를 추적되지 않는 파일로 표시할 수 있으며, 이는 예상된 동작입니다.
 
