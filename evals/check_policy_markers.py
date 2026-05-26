@@ -7,23 +7,25 @@ from pathlib import Path
 
 CHECKS = {
     "README.md": [
-        "Deletion And Retention Policy",
+        "Safety And Retention",
         "not an autonomous scheduler",
         "Do not archive automatically",
         "Archive Policy",
         "Concurrent Edits",
         "Do not store passwords, tokens",
+        "Hard-delete an item only",
         "untrusted",
         "`--strict-safety` is intentionally conservative",
         "Required values for open items",
     ],
     "README.ko.md": [
-        "Deletion And Retention Policy",
+        "Safety And Retention",
         "자율 스케줄러",
         "자동 archive는 하지 않습니다",
         "Archive Policy",
         "Concurrent Edits",
         "비밀번호, 토큰",
+        "Hard-delete",
         "신뢰할 수 없는",
         "`--strict-safety`는 의도적으로 보수적입니다",
         "open 항목의 필수 값",
