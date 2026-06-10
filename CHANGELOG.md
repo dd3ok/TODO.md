@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added English and Korean semantic coverage for default local/private
+  watchlist creation when no WATCHLIST file exists.
+- Added a broad staging self-check to keep private `.watchlist/WATCHLIST.md` data
+  out of `git add .` and `git add -A` workflows.
+- Added optional semantic-case category metadata and `expected.must_not`
+  validation for false-trigger cases.
+- Added wrapper help coverage for bundled validator options.
+
 ## [0.4.2] - 2026-06-10
 
 ### Changed

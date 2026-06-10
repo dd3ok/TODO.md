@@ -26,3 +26,6 @@ reminder-without-watchlist-kr,false,"내일 9시에 배포 확인하라고 리�
 generic-delete-file-en,false,"Delete README.md","does not trigger watchlist unless WATCHLIST.md or a valid WL-YYYYMMDD-NNN item is mentioned"
 check-now-en,false,"Check the GitHub Actions result now.","does the check now when possible and does not create a watchlist item only because the task mentions GitHub Actions"
 non-watchlist-id-en,false,"The WL-ABC warehouse label is obsolete; delete it.","does not trigger watchlist for non-WATCHLIST WL-like text that is not a WL-YYYYMMDD-NNN item"
+no-existing-watchlist-default-local-private,true,"Add this to watchlist. Check local test logs today at 18:00.","with no existing WATCHLIST and no shared-team intent, creates local/private .watchlist/WATCHLIST.md instead of root WATCHLIST.md"
+no-existing-watchlist-default-local-private-kr,true,"watchlist에 남겨. 오늘 18:00에 로컬 테스트 로그 확인.","with no existing WATCHLIST and no shared-team intent, creates local/private .watchlist/WATCHLIST.md instead of root WATCHLIST.md"
+broad-stage-private-watchlist,false,"Commit all changes with git add . or git add -A.","does not trigger WATCHLIST and must exclude private .watchlist/WATCHLIST.md from broad staging or commit operations"
