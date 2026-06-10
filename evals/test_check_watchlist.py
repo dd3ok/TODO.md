@@ -578,14 +578,33 @@ timezone: Asia/Seoul
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validation passed", result.stdout)
 
-    def test_bundled_validator_matches_repo_validator(self):
-        self.assertEqual(
-            CHECK_SCRIPT.read_text(encoding="utf-8"),
-            BUNDLED_VALIDATOR.read_text(encoding="utf-8"),
+    def test_repo_validator_wrapper_delegates_to_bundled_validator(self):
+        wrapper = CHECK_SCRIPT.read_text(encoding="utf-8")
+        template = SKILL_DIR / "assets" / "WATCHLIST.template.md"
+
+        self.assertLess(len(wrapper), 2500)
+        self.assertIn("validate_watchlist.py", wrapper)
+        self.assertNotIn("VALID_STATUSES", wrapper)
+
+        repo_result = self.run_check_path(
+            template,
+            "--strict-format",
+            "--strict-safety",
+            "--require-archive-section",
+        )
+        bundled_result = self.run_bundled_validator(
+            template,
+            "--strict-format",
+            "--strict-safety",
+            "--require-archive-section",
         )
 
+        self.assertEqual(repo_result.returncode, bundled_result.returncode)
+        self.assertEqual(repo_result.stdout, bundled_result.stdout)
+        self.assertEqual(repo_result.stderr, bundled_result.stderr)
+
     def test_validator_has_no_dead_item_only_safety_scanner(self):
-        validator = CHECK_SCRIPT.read_text(encoding="utf-8")
+        validator = BUNDLED_VALIDATOR.read_text(encoding="utf-8")
 
         self.assertNotIn("def scan_safety(", validator)
         self.assertIn("def scan_document_safety(", validator)
