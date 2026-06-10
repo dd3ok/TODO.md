@@ -6,13 +6,17 @@
 
 [English README](README.md)
 
-`WATCHLIST.md`는 리포지토리 로컬 또는 개인 워치리스트 파일에 후속 확인 사항을 기록하기 위한 경량 **AI 에이전트 스킬(AI Agent Skill)**입니다. 이 스킬은 자율 스케줄러, 알림 서비스, 데몬, 데이터베이스, 크론 작업 또는 UI가 아닙니다. 대신 AI 에이전트 또는 사용자가 보류 중인 확인 사항을 기존 프로젝트 convention을 존중하는 일관된 Markdown 형식으로 남겨 놓치지 않도록 돕습니다.
+`WATCHLIST.md`는 deferred check, 후속 확인, review-time task를 기록하기 위한 경량 **AI 에이전트 스킬(AI Agent Skill)**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes 같은 에이전트가 보류 중인 CI 결과, 배포, PR, 티켓, 작업, 데이터 동기화, 이메일 확인을 놓치지 않도록 돕습니다. 이 스킬은 자율 스케줄러, 자율 알림, scheduler, daemon, database, background worker로 동작하지 않습니다.
 
 ## Problem & Solution
 
 **문제**: 긴 작업이나 여러 흐름이 겹치면 AI 에이전트가 나중에 확인해야 할 CI, 배포, 응답 대기 같은 항목을 놓치기 쉽습니다.
 
 **해결책**: `WATCHLIST.md`는 후속 확인 사항을 선택된 리포지토리 로컬 또는 개인 워치리스트 파일에 구조화된 Markdown으로 기록합니다. 세션이 끝나도 컨텍스트가 남아, 다음 검토 때 이어서 확인할 수 있습니다.
+
+## 누구를 위한 도구인가요?
+
+AI agent workflow를 만들거나 운영하면서 scheduler, daemon, database, MCP server를 만들지 않고 deferred check, CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일 후속 확인을 가벼운 Markdown 방식으로 추적해야 한다면 WATCHLIST.md가 맞습니다.
 
 ## Quickstart
 

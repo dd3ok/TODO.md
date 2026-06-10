@@ -13,6 +13,7 @@
 - Added wrapper help coverage for bundled validator options.
 - Added package-shape smoke coverage and a runtime smoke matrix for manual
   vendor runtime checks.
+- Clarified README introductions and audience guidance for agent-skill discovery.
 
 ## [0.4.2] - 2026-06-10
 
