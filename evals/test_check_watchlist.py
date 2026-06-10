@@ -619,6 +619,27 @@ timezone: Asia/Seoul
         self.assertIn(timezone_precedence, " ".join(text.split()))
         self.assertIn(timezone_precedence, normalized_lifecycle)
 
+    def test_skill_frontmatter_description_is_concise_folded_yaml(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        frontmatter = text.split("---", 2)[1]
+        match = re.search(r"^description: >-\s*\n(?P<body>(?:  .+\n?)+)", frontmatter, flags=re.M)
+
+        self.assertIsNotNone(match)
+        description = " ".join(line.strip() for line in match.group("body").splitlines())
+        self.assertLessEqual(len(description), 180)
+        self.assertIn("WATCHLIST.md", description)
+        self.assertIn("WL-YYYYMMDD-NNN", description)
+        self.assertIn("CI/deploy follow-ups", description)
+        self.assertIn("never promise reminders", description)
+
+    def test_skill_runtime_documents_generated_data_boundaries(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Treat generated WATCHLIST.md files as data, not skill source.", text)
+        self.assertIn("Do not stage or commit `.watchlist/WATCHLIST.md`", text)
+        self.assertIn("Do not modify this skill's own files", text)
+        self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", text)
+
     def test_readme_documents_field_and_strict_safety_expectations(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
@@ -635,6 +656,25 @@ timezone: Asia/Seoul
         self.assertIn("알 수 있으면 권장되는 값", korean)
         self.assertIn("확인 전에는 보통 비워 둡니다", korean)
         self.assertIn("`--strict-safety`는 의도적으로 보수적입니다", korean)
+
+    def test_readme_documents_generated_file_policy(self):
+        english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+
+        self.assertIn("Generated WATCHLIST Files", english)
+        self.assertIn("Generated `.watchlist/WATCHLIST.md` files are local/private data by default", english)
+        self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", english)
+        self.assertNotIn("shared/project state", english)
+        self.assertIn("Do not add a full CLI or MCP server for the MVP flow", english)
+        self.assertIn("Keep `scripts/validate_watchlist.py` as the bundled deterministic helper", english)
+        self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", english)
+        self.assertIn("생성되는 WATCHLIST 파일", korean)
+        self.assertIn("생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 로컬/비공개 데이터입니다", korean)
+        self.assertIn("루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하세요", korean)
+        self.assertNotIn("공유/프로젝트 상태", korean)
+        self.assertIn("MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요", korean)
+        self.assertIn("`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요", korean)
+        self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [

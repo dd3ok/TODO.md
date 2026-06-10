@@ -51,9 +51,28 @@ evals/
 
 `.agents/skills/watchlist-md/` 아래 파일은 스킬 디렉토리 설치 시 함께 번들됩니다. 리포지토리 루트의 `examples/WATCHLIST.example.md`는 이 리포지토리의 시작용 예시 파일이며, 생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 ignore됩니다.
 
+## 생성되는 WATCHLIST 파일
+
+생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 로컬/비공개 데이터입니다.
+이는 스킬 소스가 아닙니다. 디렉토리를 유지하려고 `.watchlist/.gitkeep`만
+커밋하고, 사용자 또는 팀이 명시적으로 공유 상태로 채택하지 않는 한 생성된
+워치리스트 내용은 ignore하세요.
+
+루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하세요. 공유
+워치리스트에는 개인 노트, 비공개 운영 세부 정보, 민감한 링크, 원문 로그,
+원문 이메일, 비공개 발췌가 없어야 합니다.
+
+MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요.
+`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요. 에이전트는
+이 계약에 따라 Markdown을 직접 수정한 뒤 validator를 실행할 수 있습니다.
+
 ## 설치 철학
 
 `watchlist-md`는 실제로 주로 사용하는 에이전트 런타임에 설치하세요. 기본적으로 모든 런타임에 같은 스킬을 복사하지 마세요. 중복 설치는 drift를 만들 수 있습니다. 리포지토리에는 보통 런타임별 스킬 사본이 아니라 워치리스트 데이터만 둡니다. 직접 사용하는 런타임에만 `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` 같은 짧은 포인터를 추가하세요.
+
+Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임은 가능하면 같은
+스킬 디렉토리를 사용하세요. 런타임이 다른 설치 위치를 요구할 때만 벤더별
+복사본을 두는 편이 좋습니다.
 
 ## Installation For Codex
 
@@ -71,7 +90,7 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 새 스킬이 인식되도록 설치 후 Codex를 다시 시작하세요.
 
-이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 새 파일을 만들기 전에 기존 워치리스트 convention을 존중해야 합니다. 공유/프로젝트 상태는 루트 `WATCHLIST.md`를 사용하고, 로컬/비공개 또는 리포지토리와 무관한 개인 노트는 `.watchlist/WATCHLIST.md` 또는 `$HOME/.watchlist/WATCHLIST.md`를 사용하세요.
+이 리포지토리는 스타터 아티팩트를 `examples/WATCHLIST.example.md`에 둡니다. 대상 리포지토리에서는 새 파일을 만들기 전에 기존 워치리스트 convention을 존중해야 합니다. 루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하고, 로컬/비공개 또는 리포지토리와 무관한 개인 노트는 `.watchlist/WATCHLIST.md` 또는 `$HOME/.watchlist/WATCHLIST.md`를 사용하세요.
 
 이 스타터 리포지토리에서는 스킬이 생성하는 `.watchlist/WATCHLIST.md`를 Git이 ignore해야 합니다. 대상 리포지토리에 ignore 규칙이 없다면 Git이 이를 추적되지 않는 파일로 표시할 수 있으며, 이는 예상된 동작입니다.
 

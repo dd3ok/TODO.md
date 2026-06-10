@@ -1,17 +1,8 @@
 ---
 name: watchlist-md
 description: >-
-  Manages WATCHLIST.md entries for explicit user-requested deferred checks and
-  lifecycle updates. Use when the user mentions WATCHLIST.md, a WL-YYYYMMDD-NNN
-  item ID, WATCHLIST.md에 추가, watchlist로 남겨, 후속 체크로 기록, or asks to
-  record a pending result for later review, time/event-gated CI, deploy, job,
-  data sync, order, ticket, PR, or email follow-up. Do not trigger for generic
-  reminder/scheduler requests unless the user explicitly asks to record a
-  WATCHLIST.md note.
-  Lifecycle words such as 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, and 아카이브
-  apply only when they clearly refer to WATCHLIST.md or a WL-YYYYMMDD-NNN item.
-  Records notes only; never schedules reminders or wakeups without an explicitly
-  available external scheduler.
+  Record and review WATCHLIST.md deferred checks. Use for WATCHLIST.md,
+  WL-YYYYMMDD-NNN, CI/deploy follow-ups, or 후속 체크 기록; never promise reminders.
 ---
 
 # WATCHLIST.md
@@ -23,13 +14,16 @@ worker.
 
 ## Boundary
 
+- Use this skill for WATCHLIST.md, `WL-YYYYMMDD-NNN`, or a pending result for later review.
 - Record follow-up checks; do not promise to wake up later.
 - Use an external scheduler only when the user asks and one is explicitly available.
 - Treat WATCHLIST.md as a review aid. Items become actionable when the user reviews
   the file or asks an agent to review it.
 - Do not create scripts, daemons, databases, UI, or background jobs for the MVP flow.
-- Lifecycle words only apply to WATCHLIST.md or `WL-YYYYMMDD-NNN` items, not
+- Lifecycle words such as 완료, 삭제, 취소, 드롭, 차단, 연기, 보관, and 아카이브 only
+  apply when they clearly refer to WATCHLIST.md or `WL-YYYYMMDD-NNN` items, not
   unrelated files, tasks, or conversations.
+- Do not modify this skill's own files unless explicitly asked.
 
 ## Storage
 
@@ -37,19 +31,19 @@ Choose the target by explicit user intent, existing project convention, and
 privacy/scope:
 
 1. Use an explicit WATCHLIST path if the user names one.
-2. Use an existing repo/workspace `WATCHLIST.md` for shared or project-scoped
-   follow-ups.
-3. Use an existing `.watchlist/WATCHLIST.md` for local/private repo-scoped notes.
-4. When creating a new repo-scoped watchlist without shared/team intent, prefer
+2. Use root `WATCHLIST.md` only for explicitly shared team state.
+3. Use an existing `.watchlist/WATCHLIST.md` for local/private repo notes.
+4. When creating a new repo watchlist without shared/team intent, prefer
    `.watchlist/WATCHLIST.md`.
 5. Use `$HOME/.watchlist/WATCHLIST.md` only for explicitly personal,
    repo-independent items.
 
 If both root and `.watchlist/` files exist, mention both during review. For new
-writes, do not silently choose unless the target is clear: shared/project items
-belong in root `WATCHLIST.md`; private/local items belong in `.watchlist/` or
-`$HOME`. Create the selected file if needed. Use `assets/WATCHLIST.template.md`
-when bundled. Append or minimally update entries; do not rewrite unrelated content.
+writes, do not silently choose unless the target is clear: shared team state
+belongs in root; private/local state belongs in `.watchlist/` or `$HOME`. Create
+the selected file if needed. Use `assets/WATCHLIST.template.md` when bundled.
+Append or minimally update entries; do not rewrite unrelated content.
+Treat generated WATCHLIST.md files as data, not skill source. Do not stage or commit `.watchlist/WATCHLIST.md` unless explicitly shared.
 
 ## Add
 
