@@ -77,6 +77,7 @@ Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임은 가능
 Codex와 Claude Code 설치 방법은 아래에 문서화되어 있습니다. OpenClaw와 Hermes는
 runtime smoke 전까지 AgentSkills 호환/manual 지원으로 보세요. 리포지토리 루트가
 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리를 설치하거나 복사하세요.
+실제 runtime smoke 결과는 `docs/runtime-smoke.md`에 기록합니다.
 
 ## Installation For Codex
 
@@ -229,6 +230,7 @@ python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py
+python3 evals/check_skill_package.py
 ```
 
 `evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, `evals/cases/*.json`은 수동 또는 자동 에이전트 평가에 사용할 작은 프롬프트 회귀 세트입니다. Semantic case checker는 기대 trigger와 operation 계약을 검증하며, LLM 또는 agent를 실행하지 않습니다.

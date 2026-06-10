@@ -11,6 +11,8 @@
 - Added optional semantic-case category metadata and `expected.must_not`
   validation for false-trigger cases.
 - Added wrapper help coverage for bundled validator options.
+- Added package-shape smoke coverage and a runtime smoke matrix for manual
+  vendor runtime checks.
 
 ## [0.4.2] - 2026-06-10
 

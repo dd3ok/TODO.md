@@ -75,6 +75,7 @@ unless a runtime requires a different install location.
 Codex and Claude Code installs are documented below. For OpenClaw and Hermes,
 treat support as AgentSkills-compatible/manual until runtime-smoked; install or
 copy the skill directory whose root contains `SKILL.md`, not the repository root.
+Track real runtime smoke results in `docs/runtime-smoke.md`.
 
 ## Installation For Codex
 
@@ -227,6 +228,7 @@ python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py
+python3 evals/check_skill_package.py
 ```
 
 `evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, and `evals/cases/*.json` are a small prompt regression set for manual or automated agent evaluation. The semantic case checker validates the expected trigger and operation contract; it does not run an LLM or agent.
