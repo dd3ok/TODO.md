@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.2] - 2026-06-10
+
+### Changed
+
+- Clarified generated WATCHLIST file ownership and storage conventions for
+  private `.watchlist/WATCHLIST.md` data versus explicit shared root
+  `WATCHLIST.md` files.
+- Slimmed the runtime `SKILL.md` body while keeping trigger, storage, safety, and
+  validation guardrails in the hot path.
+- Simplified repository-level validation by delegating `evals/check_watchlist.py`
+  to the bundled skill validator as the single source of validation rules.
+- Updated OpenAI skill packaging guidance to keep the uploaded zip shaped around
+  one top-level `watchlist-md/` skill directory.
+- Removed the unused alternate owner value before publishing 0.4.2.
+
 ## [0.4.1] - 2026-05-27
 
 ### Changed
