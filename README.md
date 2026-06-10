@@ -104,6 +104,8 @@ The installable skill bundle also includes `scripts/validate_watchlist.py`, so v
 python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 ```
 
+The repository-level `evals/check_watchlist.py` entrypoint delegates to the bundled validator so validation rules stay single-sourced.
+
 Personal or private watchlists should not be committed by default. If the notes are workspace-only, use a user-local ignore rule.
 
 Team-shared watchlists require explicit team adoption. If a team chooses to commit a watchlist, keep it free of personal notes, private operational details, and sensitive links or excerpts.

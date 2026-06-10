@@ -106,6 +106,8 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 ```
 
+리포지토리 레벨 `evals/check_watchlist.py` entrypoint는 번들 validator에 위임하므로 검증 규칙은 한 곳에서 관리됩니다.
+
 개인 또는 비공개 워치리스트는 기본적으로 커밋되어서는 안 됩니다. 노트가 작업 공간 전용인 경우 사용자 로컬 무시 규칙을 사용하세요.
 
 팀 공유 워치리스트는 명시적인 팀 채택이 필요합니다. 팀이 워치리스트를 커밋하기로 선택한 경우, 개인 노트, 비공개 운영 세부 정보 및 민감한 링크 또는 발췌문이 없도록 유지하세요.
