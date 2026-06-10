@@ -1,8 +1,6 @@
 ---
 name: watchlist-md
-description: >-
-  Record and review WATCHLIST.md deferred checks. Use for WATCHLIST.md,
-  WL-YYYYMMDD-NNN, CI/deploy follow-ups, or 후속 체크 기록; never promise reminders.
+description: Add/review/update WATCHLIST.md or WL-YYYYMMDD-NNN deferred checks for CI/deploy/job/sync/order/PR/ticket/email 후속 체크; never generic reminders/wakeups.
 ---
 
 # WATCHLIST.md
@@ -43,7 +41,10 @@ writes, do not silently choose unless the target is clear: shared team state
 belongs in root; private/local state belongs in `.watchlist/` or `$HOME`. Create
 the selected file if needed. Use `assets/WATCHLIST.template.md` when bundled.
 Append or minimally update entries; do not rewrite unrelated content.
-Treat generated WATCHLIST.md files as data, not skill source. Do not stage or commit `.watchlist/WATCHLIST.md` unless explicitly shared.
+
+- Treat generated WATCHLIST.md files as data, not skill source.
+- Do not stage or commit `.watchlist/WATCHLIST.md` unless explicitly shared.
+- Before `git add .`/`git add -A`, confirm private watchlists are excluded.
 
 ## Add
 

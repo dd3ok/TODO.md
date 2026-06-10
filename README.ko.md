@@ -74,6 +74,10 @@ Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임은 가능
 스킬 디렉토리를 사용하세요. 런타임이 다른 설치 위치를 요구할 때만 벤더별
 복사본을 두는 편이 좋습니다.
 
+Codex와 Claude Code 설치 방법은 아래에 문서화되어 있습니다. OpenClaw와 Hermes는
+runtime smoke 전까지 AgentSkills 호환/manual 지원으로 보세요. 리포지토리 루트가
+아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리를 설치하거나 복사하세요.
+
 ## Installation For Codex
 
 이 리포지토리 루트는 스타터 리포입니다. 실제 스킬 디렉토리는 다음과 같습니다:

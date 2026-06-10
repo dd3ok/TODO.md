@@ -25,6 +25,25 @@ SEMANTIC_CASES = importlib.util.module_from_spec(_SEMANTIC_SPEC)
 _SEMANTIC_SPEC.loader.exec_module(SEMANTIC_CASES)
 
 
+def parse_skill_frontmatter_description(text):
+    frontmatter = text.split("---", 2)[1]
+    inline_match = re.search(r"^description:\s+(?P<value>.+)$", frontmatter, flags=re.M)
+    if inline_match:
+        value = inline_match.group("value").strip()
+        if value not in {">", ">-", ">|", "|", "|-"}:
+            return value.strip("'\"")
+
+    block_match = re.search(
+        r"^description:\s*[>|]-?\s*\n(?P<body>(?:  .+\n?)+)",
+        frontmatter,
+        flags=re.M,
+    )
+    if block_match:
+        return " ".join(line.strip() for line in block_match.group("body").splitlines())
+
+    return None
+
+
 VALID_WATCHLIST = """# WATCHLIST.md
 
 schema_version: 1
@@ -619,18 +638,27 @@ timezone: Asia/Seoul
         self.assertIn(timezone_precedence, " ".join(text.split()))
         self.assertIn(timezone_precedence, normalized_lifecycle)
 
-    def test_skill_frontmatter_description_is_concise_folded_yaml(self):
+    def test_skill_frontmatter_description_is_concise_trigger_rich(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        frontmatter = text.split("---", 2)[1]
-        match = re.search(r"^description: >-\s*\n(?P<body>(?:  .+\n?)+)", frontmatter, flags=re.M)
+        description = parse_skill_frontmatter_description(text)
 
-        self.assertIsNotNone(match)
-        description = " ".join(line.strip() for line in match.group("body").splitlines())
-        self.assertLessEqual(len(description), 180)
-        self.assertIn("WATCHLIST.md", description)
-        self.assertIn("WL-YYYYMMDD-NNN", description)
-        self.assertIn("CI/deploy follow-ups", description)
-        self.assertIn("never promise reminders", description)
+        self.assertIsNotNone(description)
+        self.assertLessEqual(len(description), 160)
+        for trigger in [
+            "WATCHLIST.md",
+            "WL-YYYYMMDD-NNN",
+            "CI",
+            "deploy",
+            "job",
+            "sync",
+            "order",
+            "PR",
+            "ticket",
+            "email",
+            "후속 체크",
+        ]:
+            self.assertIn(trigger, description)
+        self.assertIn("never generic reminders/wakeups", description)
 
     def test_skill_runtime_documents_generated_data_boundaries(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -660,6 +688,8 @@ timezone: Asia/Seoul
     def test_readme_documents_generated_file_policy(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+        normalized_english = " ".join(english.split())
+        normalized_korean = " ".join(korean.split())
 
         self.assertIn("Generated WATCHLIST Files", english)
         self.assertIn("Generated `.watchlist/WATCHLIST.md` files are local/private data by default", english)
@@ -668,6 +698,8 @@ timezone: Asia/Seoul
         self.assertIn("Do not add a full CLI or MCP server for the MVP flow", english)
         self.assertIn("Keep `scripts/validate_watchlist.py` as the bundled deterministic helper", english)
         self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", english)
+        self.assertIn("until runtime-smoked", normalized_english)
+        self.assertIn("not the repository root", normalized_english)
         self.assertIn("생성되는 WATCHLIST 파일", korean)
         self.assertIn("생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 로컬/비공개 데이터입니다", korean)
         self.assertIn("루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하세요", korean)
@@ -675,6 +707,8 @@ timezone: Asia/Seoul
         self.assertIn("MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요", korean)
         self.assertIn("`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요", korean)
         self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
+        self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
+        self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [

@@ -72,6 +72,10 @@ AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes
 should use the same skill directory when possible. Avoid vendor-specific copies
 unless a runtime requires a different install location.
 
+Codex and Claude Code installs are documented below. For OpenClaw and Hermes,
+treat support as AgentSkills-compatible/manual until runtime-smoked; install or
+copy the skill directory whose root contains `SKILL.md`, not the repository root.
+
 ## Installation For Codex
 
 This repository root is a starter repo. The actual skill directory is:
