@@ -7,6 +7,7 @@ import csv
 import importlib.util
 import json
 import re
+import zipfile
 from pathlib import Path
 
 
@@ -16,6 +17,7 @@ CHECK_SCRIPT = REPO_ROOT / "evals" / "check_watchlist.py"
 POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
 RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
 SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
+PACKAGE_SCRIPT = REPO_ROOT / "evals" / "check_skill_package.py"
 BUNDLED_VALIDATOR = SKILL_DIR / "scripts" / "validate_watchlist.py"
 
 _SEMANTIC_SPEC = importlib.util.spec_from_file_location(
@@ -23,6 +25,12 @@ _SEMANTIC_SPEC = importlib.util.spec_from_file_location(
 )
 SEMANTIC_CASES = importlib.util.module_from_spec(_SEMANTIC_SPEC)
 _SEMANTIC_SPEC.loader.exec_module(SEMANTIC_CASES)
+
+_PACKAGE_SPEC = importlib.util.spec_from_file_location(
+    "check_skill_package", PACKAGE_SCRIPT
+)
+PACKAGE_CHECK = importlib.util.module_from_spec(_PACKAGE_SPEC)
+_PACKAGE_SPEC.loader.exec_module(PACKAGE_CHECK)
 
 
 def parse_skill_frontmatter_description(text):
@@ -742,6 +750,7 @@ timezone: Asia/Seoul
         self.assertIn("Keep `scripts/validate_watchlist.py` as the bundled deterministic helper", english)
         self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", english)
         self.assertIn("until runtime-smoked", normalized_english)
+        self.assertIn("docs/runtime-smoke.md", english)
         self.assertIn("not the repository root", normalized_english)
         self.assertIn("생성되는 WATCHLIST 파일", korean)
         self.assertIn("생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 로컬/비공개 데이터입니다", korean)
@@ -751,6 +760,7 @@ timezone: Asia/Seoul
         self.assertIn("`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요", korean)
         self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
         self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
+        self.assertIn("docs/runtime-smoke.md", korean)
         self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
     def test_readme_openai_zip_packaging_uses_one_top_level_skill_folder(self):
@@ -763,6 +773,43 @@ timezone: Asia/Seoul
                 self.assertIn("watchlist-md/SKILL.md", text)
                 self.assertIn("watchlist-md/scripts/validate_watchlist.py", text)
                 self.assertNotIn("zip -r watchlist-md-skill.zip SKILL.md", text)
+
+    def test_skill_package_shape_checker_passes(self):
+        result = self.run_script(PACKAGE_SCRIPT)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Skill package check passed", result.stdout)
+
+    def test_skill_package_checker_rejects_repository_only_paths_under_package_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "bad-package.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr("watchlist-md/evals/case.json", "{}")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "package includes repository-only path: watchlist-md/evals/case.json",
+            errors,
+        )
+
+    def test_ci_runs_skill_package_shape_checker(self):
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Check skill package shape", workflow)
+        self.assertIn("python evals/check_skill_package.py", workflow)
+
+    def test_runtime_smoke_doc_tracks_pending_vendor_matrix(self):
+        text = (REPO_ROOT / "docs" / "runtime-smoke.md").read_text(encoding="utf-8")
+
+        for runtime in ["Codex", "Claude Code", "Gemini CLI", "Kilo", "OpenClaw", "Hermes"]:
+            self.assertIn(runtime, text)
+        self.assertIn("pending", text)
+        self.assertIn("Record only real runtime results", text)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [
