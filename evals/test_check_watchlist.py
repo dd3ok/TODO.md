@@ -736,6 +736,24 @@ timezone: Asia/Seoul
         self.assertIn("확인 전에는 보통 비워 둡니다", korean)
         self.assertIn("`--strict-safety`는 의도적으로 보수적입니다", korean)
 
+    def test_readme_intro_and_audience_are_search_discoverable(self):
+        english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+
+        self.assertIn("AgentSkills-compatible Markdown workflow", english)
+        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes", english)
+        self.assertIn("not an autonomous scheduler", english)
+        self.assertIn("## Who Is This For?", english)
+        self.assertIn("CI follow-ups, deployment verification, PR checks", english)
+        self.assertIn("without creating a scheduler, daemon, database, or MCP server", english)
+
+        self.assertIn("AgentSkills 호환 Markdown workflow", korean)
+        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes", korean)
+        self.assertIn("자율 알림", korean)
+        self.assertIn("## 누구를 위한 도구인가요?", korean)
+        self.assertIn("CI 후속 확인, 배포 검증, PR 확인", korean)
+        self.assertIn("scheduler, daemon, database, MCP server", korean)
+
     def test_readme_documents_generated_file_policy(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")

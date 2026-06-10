@@ -6,13 +6,17 @@
 
 [Korean README](README.ko.md)
 
-`WATCHLIST.md` is a lightweight **AI Agent Skill** for recording deferred checks and follow-up checks in a repository-local or personal watchlist file. It supports Codex, Claude Code, and other AI agent workflows by writing pending follow-ups in a consistent Markdown format while respecting existing project conventions. It is not an autonomous scheduler, reminder service, daemon, database, cron job, or UI.
+`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks, follow-up checks, and review-time tasks. It helps agents such as Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes track pending CI results, deployments, PRs, tickets, jobs, data syncs, and emails. It is not an autonomous scheduler, reminder service, daemon, database, cron job, UI, or background worker.
 
 ## Problem & Solution
 
 **Problem**: During long-running work or overlapping task streams, AI agents can easily lose track of things that need to be checked later, such as CI, deployments, pending replies, or background jobs.
 
 **Solution**: `WATCHLIST.md` records follow-up checks as structured Markdown in the selected repo-local or personal watchlist file. Context remains available after a session ends, so the next review can pick up where the previous one left off.
+
+## Who Is This For?
+
+Use WATCHLIST.md if you build or operate AI agent workflows and need a lightweight Markdown way to track deferred checks, CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, or email follow-ups without creating a scheduler, daemon, database, or MCP server.
 
 ## Quickstart
 
