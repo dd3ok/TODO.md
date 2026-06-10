@@ -608,6 +608,25 @@ timezone: Asia/Seoul
         self.assertEqual(repo_result.stdout, bundled_result.stdout)
         self.assertEqual(repo_result.stderr, bundled_result.stderr)
 
+    def test_repo_validator_wrapper_help_exposes_bundled_options(self):
+        result = subprocess.run(
+            [sys.executable, str(CHECK_SCRIPT), "--help"],
+            cwd=REPO_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        for token in [
+            "--strict-format",
+            "--strict-safety",
+            "--require-archive-section",
+            "--json",
+        ]:
+            with self.subTest(token=token):
+                self.assertIn(token, result.stdout)
+
     def test_validator_has_no_dead_item_only_safety_scanner(self):
         validator = BUNDLED_VALIDATOR.read_text(encoding="utf-8")
 
@@ -793,6 +812,101 @@ timezone: Asia/Seoul
         self.assertIn("id: generic-delete-file-en", text)
         self.assertIn("id: check-now-en", text)
         self.assertIn("id: non-watchlist-id-en", text)
+
+    def test_self_checks_include_broad_staging_private_watchlist_case(self):
+        text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "broad-stage-private-watchlist.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertIn("id: broad-stage-private-watchlist", text)
+        self.assertIn("git add .", text)
+        self.assertIn("git add -A", text)
+        self.assertIn(".watchlist/WATCHLIST.md", text)
+        self.assertIn("stage_private_watchlist", text)
+        self.assertIn("commit_private_watchlist", text)
+        self.assertEqual(case["category"], "agent-workflow-safety")
+        self.assertIn("stage_private_watchlist", case["expected"]["must_not"])
+        self.assertIn("commit_private_watchlist", case["expected"]["must_not"])
+
+    def test_semantic_cases_cover_default_local_private_storage_creation(self):
+        cases = {
+            "no-existing-watchlist-default-local-private": "en",
+            "no-existing-watchlist-default-local-private-kr": "ko",
+        }
+
+        for case_id, locale in cases.items():
+            with self.subTest(case_id=case_id):
+                path = REPO_ROOT / "evals" / "cases" / f"{case_id}.json"
+                case = json.loads(path.read_text(encoding="utf-8"))
+
+                self.assertEqual(case["id"], case_id)
+                self.assertEqual(case["category"], "storage-policy")
+                self.assertEqual(case["locale"], locale)
+                self.assertEqual(case["workspace"]["existing_paths"], [])
+                self.assertEqual(case["expected"]["storage"]["target"], ".watchlist/WATCHLIST.md")
+                self.assertEqual(case["expected"]["storage"]["scope"], "local_private")
+                self.assertIn(
+                    "create_root_watchlist_without_shared_team_intent",
+                    case["expected"]["storage"]["must_not"],
+                )
+                self.assertIn(
+                    "write_shared_state_to_private_watchlist",
+                    case["expected"]["storage"]["must_not"],
+                )
+
+    def test_semantic_case_validation_rejects_unknown_category(self):
+        case = {
+            "id": "sample-case",
+            "category": "workflow-safety",
+            "prompt": "Commit all changes.",
+            "locale": "en",
+            "fixed_now": "2026-05-15T10:00:00+09:00",
+            "fixture": "empty.watchlist.md",
+            "should_trigger_skill": False,
+            "expected": {"must_not_modify_watchlist": True},
+        }
+        prompts = {
+            "sample-case": {
+                "id": "sample-case",
+                "should_trigger": "false",
+                "prompt": "Commit all changes.",
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": "Commit all changes."}}, errors)
+
+        self.assertIn("sample-case: category is unsupported: workflow-safety", errors)
+
+    def test_false_trigger_semantic_case_validates_optional_must_not_list(self):
+        case = {
+            "id": "sample-case",
+            "category": "agent-workflow-safety",
+            "prompt": "Commit all changes.",
+            "locale": "en",
+            "fixed_now": "2026-05-15T10:00:00+09:00",
+            "fixture": "empty.watchlist.md",
+            "should_trigger_skill": False,
+            "expected": {
+                "must_not_modify_watchlist": True,
+                "must_not": "stage_private_watchlist",
+            },
+        }
+        prompts = {
+            "sample-case": {
+                "id": "sample-case",
+                "should_trigger": "false",
+                "prompt": "Commit all changes.",
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": "Commit all changes."}}, errors)
+
+        self.assertIn("sample-case: expected.must_not must be a list", errors)
 
     def test_self_checks_case_ids_match_prompts_csv(self):
         with (REPO_ROOT / "evals" / "prompts.csv").open(encoding="utf-8", newline="") as fh:

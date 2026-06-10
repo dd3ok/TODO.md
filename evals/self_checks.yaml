@@ -245,3 +245,30 @@ cases:
       should_trigger_skill: false
       reason: "WL-like text is not a WATCHLIST.md item ID or watchlist context"
       must_not_modify_watchlist: true
+  - id: no-existing-watchlist-default-local-private
+    prompt: "Add this to watchlist. Check local test logs today at 18:00."
+    expected:
+      storage_target: ".watchlist/WATCHLIST.md"
+      storage_scope: local_private
+      must_not:
+        - create_root_watchlist_without_shared_team_intent
+        - write_shared_state_to_private_watchlist
+  - id: no-existing-watchlist-default-local-private-kr
+    prompt: "watchlist에 남겨. 오늘 18:00에 로컬 테스트 로그 확인."
+    expected:
+      storage_target: ".watchlist/WATCHLIST.md"
+      storage_scope: local_private
+      must_not:
+        - create_root_watchlist_without_shared_team_intent
+        - write_shared_state_to_private_watchlist
+  - id: broad-stage-private-watchlist
+    prompt: "Commit all changes with git add . or git add -A."
+    expected:
+      should_trigger_skill: false
+      must_not_modify_watchlist: true
+      must_not:
+        - stage_private_watchlist
+        - commit_private_watchlist
+      required_response_substrings:
+        - ".watchlist/WATCHLIST.md"
+        - "excluded"

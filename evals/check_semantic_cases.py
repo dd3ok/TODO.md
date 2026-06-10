@@ -57,6 +57,11 @@ SUPPORTED_STORAGE_SCOPES = {
     "personal_repo_independent",
     "ambiguous",
 }
+SUPPORTED_CATEGORIES = {
+    "skill-trigger",
+    "storage-policy",
+    "agent-workflow-safety",
+}
 
 
 def fail(message: str) -> int:
@@ -593,6 +598,10 @@ def validate_case(
     if case.get("locale") not in {"ko", "en", "mixed"}:
         errors.append(f"{case_id}: locale must be ko, en, or mixed")
 
+    category = case.get("category")
+    if category is not None and category not in SUPPORTED_CATEGORIES:
+        errors.append(f"{case_id}: category is unsupported: {category}")
+
     validate_iso_timestamp(str(case.get("fixed_now", "")), case_id, errors, "fixed_now")
     fixture_text = validate_fixture(str(case.get("fixture", "")), case_id, errors)
 
@@ -609,6 +618,8 @@ def validate_case(
                 f"{case_id}: should_trigger_skill=false must set "
                 "expected.must_not_modify_watchlist=true"
             )
+        if "must_not" in expected:
+            require_string_list(expected, "must_not", case_id, errors, "expected")
         return
 
     if expected_should_trigger is not True:
