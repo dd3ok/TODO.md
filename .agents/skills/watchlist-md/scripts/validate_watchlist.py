@@ -13,8 +13,7 @@ from typing import Optional
 
 VALID_STATUSES = {"open", "snoozed", "blocked", "done", "dropped"}
 VALID_PRIORITIES = {"P0", "P1", "P2", "P3"}
-# "agent" is accepted for legacy compatibility; use "assistant_on_review" for new items.
-VALID_OWNERS = {"user", "assistant_on_review", "both", "external", "agent"}
+VALID_OWNERS = {"user", "assistant_on_review", "both", "external"}
 VALID_ARCHIVE_POLICIES = {"manual", "suggest"}
 FIELD_ORDER = [
     "status",

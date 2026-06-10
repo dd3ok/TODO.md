@@ -177,14 +177,14 @@ cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 
 ## Installation For ChatGPT / OpenAI Skills
 
-OpenAI skill surface는 Codex 또는 Claude Code 설치와 자동으로 동기화되지 않습니다. 스킬 번들을 업로드할 때는 스킬 디렉토리 자체가 archive root가 되도록 패키징하세요:
+OpenAI skill surface는 Codex 또는 Claude Code 설치와 자동으로 동기화되지 않습니다. 스킬 번들을 zip으로 업로드할 때는 하나의 top-level 스킬 디렉토리를 포함하도록 패키징하세요:
 
 ```bash
-cd .agents/skills/watchlist-md
-zip -r watchlist-md-skill.zip SKILL.md assets references scripts agents
+cd .agents/skills
+zip -r watchlist-md-skill.zip watchlist-md
 ```
 
-생성된 zip을 사용 중인 OpenAI skill 관리 UI 또는 workflow에 업로드하세요. bundled validator는 `scripts/validate_watchlist.py`에 포함되어 있고, repository-level `evals/`는 이 source repo 검증용입니다.
+생성된 zip을 사용 중인 OpenAI skill 관리 UI 또는 workflow에 업로드하세요. archive는 top-level 폴더 아래 `watchlist-md/SKILL.md`를 포함해야 합니다. bundled validator는 `watchlist-md/scripts/validate_watchlist.py`에 포함되어 있고, repository-level `evals/`는 이 source repo 검증용입니다.
 
 테스트:
 

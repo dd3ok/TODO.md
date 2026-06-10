@@ -175,6 +175,11 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails(text, "Invalid owner")
 
+    def test_owner_agent_is_not_supported(self):
+        text = VALID_WATCHLIST.replace("- owner: assistant_on_review", "- owner: agent")
+
+        self.assert_check_fails(text, "Invalid owner")
+
     def test_invalid_due_at_fails(self):
         text = VALID_WATCHLIST.replace(
             "- due_at: 2026-05-14T17:00:00+09:00", "- due_at: tomorrow"
@@ -614,9 +619,9 @@ timezone: Asia/Seoul
         body = text.split("---", 2)[-1]
         add_section = body.split("## Add", 1)[1].split("## Review", 1)[0]
 
-        self.assertLessEqual(len(text.splitlines()), 180)
-        self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 900)
-        self.assertLessEqual(len(re.findall(r"\b\w+\b", add_section)), 285)
+        self.assertLessEqual(len(text.splitlines()), 150)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 760)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", add_section)), 250)
         self.assertIn("references/lifecycle.md", text)
         self.assertIn("references/safety.md", text)
         self.assertLess(text.index("## Add"), text.index("references/lifecycle.md"))
@@ -728,6 +733,17 @@ timezone: Asia/Seoul
         self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
         self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
         self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
+
+    def test_readme_openai_zip_packaging_uses_one_top_level_skill_folder(self):
+        english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+
+        for text in [english, korean]:
+            with self.subTest():
+                self.assertIn("zip -r watchlist-md-skill.zip watchlist-md", text)
+                self.assertIn("watchlist-md/SKILL.md", text)
+                self.assertIn("watchlist-md/scripts/validate_watchlist.py", text)
+                self.assertNotIn("zip -r watchlist-md-skill.zip SKILL.md", text)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [

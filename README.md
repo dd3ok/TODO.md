@@ -175,14 +175,14 @@ The `agents/openai.yaml` file is Codex UI metadata. It is safe if it is copied w
 
 ## Installation For ChatGPT / OpenAI Skills
 
-OpenAI skill surfaces do not automatically sync with Codex or Claude Code installs. When uploading a skill bundle, package the skill directory itself as the archive root:
+OpenAI skill surfaces do not automatically sync with Codex or Claude Code installs. When uploading a skill bundle as a zip, package one top-level skill directory:
 
 ```bash
-cd .agents/skills/watchlist-md
-zip -r watchlist-md-skill.zip SKILL.md assets references scripts agents
+cd .agents/skills
+zip -r watchlist-md-skill.zip watchlist-md
 ```
 
-Upload the resulting zip through the OpenAI skill management UI or workflow you are using. The bundled validator is included under `scripts/validate_watchlist.py`; repository-level `evals/` are only for this source repo.
+Upload the resulting zip through the OpenAI skill management UI or workflow you are using. The archive should contain `watchlist-md/SKILL.md` at its top-level folder. The bundled validator is included under `watchlist-md/scripts/validate_watchlist.py`; repository-level `evals/` are only for this source repo.
 
 Test:
 
