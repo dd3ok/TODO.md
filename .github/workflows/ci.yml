@@ -47,8 +47,8 @@ jobs:
       - name: Validate bundled WATCHLIST template
         run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 
-      - name: Smoke test bundled validator
-        run: python .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+      - name: Smoke test maintainer validator
+        run: python tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 
       - name: Check skill package shape
         run: python evals/check_skill_package.py

@@ -7,16 +7,22 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BUNDLED_VALIDATOR = (
-    ROOT / ".agents" / "skills" / "watchlist-md" / "scripts" / "validate_watchlist.py"
-)
+REPO_VALIDATOR = ROOT / "tools" / "validate_watchlist.py"
 
 
 def main() -> int:
-    if not BUNDLED_VALIDATOR.is_file():
-        print(f"Bundled validator not found: {BUNDLED_VALIDATOR}", file=sys.stderr)
+    if not REPO_VALIDATOR.is_file():
+        print(f"Repository validator not found: {REPO_VALIDATOR}", file=sys.stderr)
         return 1
-    runpy.run_path(str(BUNDLED_VALIDATOR), run_name="__main__")
+    try:
+        runpy.run_path(str(REPO_VALIDATOR), run_name="__main__")
+    except SystemExit as exc:
+        if exc.code is None:
+            return 0
+        if isinstance(exc.code, int):
+            return exc.code
+        print(exc.code, file=sys.stderr)
+        return 1
     return 0
 
 

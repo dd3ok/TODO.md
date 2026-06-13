@@ -7,8 +7,10 @@ archive_policy: manual
 
 <!-- Starter template for repository-local watchlists. In target repositories, treat repo-local watchlists as personal workspace notes unless the team explicitly adopts them. -->
 <!-- This file records deferred checks for explicit review. It is not a scheduler, reminder service, or automation mechanism. -->
+<!-- Do not store sensitive content or credential-bearing links. Use safe pointers instead. -->
 
-This file records future checks, reminder notes, and deferred work. It is not an autonomous scheduler.
+This file records deferred checks and review-time follow-up notes.
+It is not an autonomous scheduler, reminder service, or automation mechanism.
 
 ## Open
 

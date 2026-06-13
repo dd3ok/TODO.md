@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import contextlib
+import io
 import subprocess
 import sys
 import tempfile
@@ -18,7 +20,7 @@ POLICY_SCRIPT = REPO_ROOT / "evals" / "check_policy_markers.py"
 RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
 SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
 PACKAGE_SCRIPT = REPO_ROOT / "evals" / "check_skill_package.py"
-BUNDLED_VALIDATOR = SKILL_DIR / "scripts" / "validate_watchlist.py"
+REPO_VALIDATOR = REPO_ROOT / "tools" / "validate_watchlist.py"
 
 _SEMANTIC_SPEC = importlib.util.spec_from_file_location(
     "check_semantic_cases", SEMANTIC_SCRIPT
@@ -31,6 +33,12 @@ _PACKAGE_SPEC = importlib.util.spec_from_file_location(
 )
 PACKAGE_CHECK = importlib.util.module_from_spec(_PACKAGE_SPEC)
 _PACKAGE_SPEC.loader.exec_module(PACKAGE_CHECK)
+
+_CHECK_WRAPPER_SPEC = importlib.util.spec_from_file_location(
+    "check_watchlist_wrapper", CHECK_SCRIPT
+)
+CHECK_WRAPPER = importlib.util.module_from_spec(_CHECK_WRAPPER_SPEC)
+_CHECK_WRAPPER_SPEC.loader.exec_module(CHECK_WRAPPER)
 
 
 def parse_skill_frontmatter_description(text):
@@ -103,9 +111,9 @@ class CheckWatchlistTests(unittest.TestCase):
             check=False,
         )
 
-    def run_bundled_validator(self, path, *args):
+    def run_repo_validator(self, path, *args):
         return subprocess.run(
-            [sys.executable, str(BUNDLED_VALIDATOR), str(path), *args],
+            [sys.executable, str(REPO_VALIDATOR), str(path), *args],
             cwd=REPO_ROOT,
             text=True,
             capture_output=True,
@@ -567,10 +575,9 @@ timezone: Asia/Seoul
         expected_files = [
             SKILL_DIR / "SKILL.md",
             SKILL_DIR / "assets" / "WATCHLIST.template.md",
-            SKILL_DIR / "references" / "self-checks.md",
+            SKILL_DIR / "references" / "format.md",
             SKILL_DIR / "references" / "lifecycle.md",
             SKILL_DIR / "references" / "safety.md",
-            BUNDLED_VALIDATOR,
             SKILL_DIR / "agents" / "openai.yaml",
         ]
 
@@ -578,10 +585,27 @@ timezone: Asia/Seoul
             with self.subTest(path=path):
                 self.assertTrue(path.is_file(), f"missing bundled resource: {path}")
 
-    def test_bundled_validator_can_validate_template_without_repo_evals(self):
+        self.assertFalse(
+            (SKILL_DIR / "references" / "self-checks.md").exists(),
+            "maintainer self-check prompts must not ship in the runtime bundle",
+        )
+        self.assertTrue((REPO_ROOT / "docs" / "maintainers" / "self-checks.md").is_file())
+
+    def test_installable_skill_bundle_is_python_family_free(self):
+        python_files = sorted(
+            p
+            for p in SKILL_DIR.rglob("*")
+            if p.suffix in {".py", ".pyw", ".pyc", ".pyo"}
+        )
+        scripts_dir = SKILL_DIR / "scripts"
+
+        self.assertEqual(python_files, [])
+        self.assertFalse(scripts_dir.exists(), "runtime skill bundle must not include scripts/")
+
+    def test_repo_validator_can_validate_template(self):
         template = SKILL_DIR / "assets" / "WATCHLIST.template.md"
 
-        result = self.run_bundled_validator(
+        result = self.run_repo_validator(
             template,
             "--strict-format",
             "--strict-safety",
@@ -591,11 +615,12 @@ timezone: Asia/Seoul
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validation passed", result.stdout)
 
-    def test_repo_validator_wrapper_delegates_to_bundled_validator(self):
+    def test_repo_validator_wrapper_delegates_to_tools_validator(self):
         wrapper = CHECK_SCRIPT.read_text(encoding="utf-8")
         template = SKILL_DIR / "assets" / "WATCHLIST.template.md"
 
         self.assertLess(len(wrapper), 2500)
+        self.assertIn("tools", wrapper)
         self.assertIn("validate_watchlist.py", wrapper)
         self.assertNotIn("VALID_STATUSES", wrapper)
 
@@ -605,16 +630,29 @@ timezone: Asia/Seoul
             "--strict-safety",
             "--require-archive-section",
         )
-        bundled_result = self.run_bundled_validator(
+        direct_result = self.run_repo_validator(
             template,
             "--strict-format",
             "--strict-safety",
             "--require-archive-section",
         )
 
-        self.assertEqual(repo_result.returncode, bundled_result.returncode)
-        self.assertEqual(repo_result.stdout, bundled_result.stdout)
-        self.assertEqual(repo_result.stderr, bundled_result.stderr)
+        self.assertEqual(repo_result.returncode, direct_result.returncode)
+        self.assertEqual(repo_result.stdout, direct_result.stdout)
+        self.assertEqual(repo_result.stderr, direct_result.stderr)
+
+    def test_repo_validator_wrapper_main_normalizes_system_exit_to_return_code(self):
+        original_argv = sys.argv[:]
+        sys.argv = [str(CHECK_SCRIPT), "--help"]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(
+                io.StringIO()
+            ):
+                result = CHECK_WRAPPER.main()
+        finally:
+            sys.argv = original_argv
+
+        self.assertEqual(result, 0)
 
     def test_repo_validator_wrapper_help_exposes_bundled_options(self):
         result = subprocess.run(
@@ -636,7 +674,7 @@ timezone: Asia/Seoul
                 self.assertIn(token, result.stdout)
 
     def test_validator_has_no_dead_item_only_safety_scanner(self):
-        validator = BUNDLED_VALIDATOR.read_text(encoding="utf-8")
+        validator = REPO_VALIDATOR.read_text(encoding="utf-8")
 
         self.assertNotIn("def scan_safety(", validator)
         self.assertIn("def scan_document_safety(", validator)
@@ -646,17 +684,21 @@ timezone: Asia/Seoul
         body = text.split("---", 2)[-1]
         add_section = body.split("## Add", 1)[1].split("## Review", 1)[0]
 
-        self.assertLessEqual(len(text.splitlines()), 150)
-        self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 760)
-        self.assertLessEqual(len(re.findall(r"\b\w+\b", add_section)), 250)
+        self.assertLessEqual(len(text.splitlines()), 100)
+        self.assertLessEqual(len(text.encode("utf-8")), 4500)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", body)), 590)
+        self.assertLessEqual(len(re.findall(r"\b\w+\b", add_section)), 180)
         self.assertIn("references/lifecycle.md", text)
         self.assertIn("references/safety.md", text)
+        self.assertNotIn("references/self-checks.md", text)
         self.assertLess(text.index("## Add"), text.index("references/lifecycle.md"))
 
     def test_skill_runtime_polish_markers_stay_precise(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        format_text = (SKILL_DIR / "references" / "format.md").read_text(encoding="utf-8")
         lifecycle = (SKILL_DIR / "references" / "lifecycle.md").read_text(encoding="utf-8")
         normalized_text = " ".join(text.split()).lower()
+        normalized_format = " ".join(format_text.split())
         normalized_lifecycle = " ".join(lifecycle.split())
         timezone_precedence = (
             "Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field "
@@ -668,7 +710,7 @@ timezone: Asia/Seoul
             "trigger, action, and done_when."
         )
 
-        self.assertIn("pending result for later review", text)
+        self.assertIn("WATCHLIST-scoped operational pending result", text)
         self.assertNotIn("후속 체크로 기록, pending", text)
         self.assertIn(
             "scope pre-authorized watchlist recording to the current repo/workspace",
@@ -680,21 +722,32 @@ timezone: Asia/Seoul
         )
         self.assertIn("due_at", text)
         self.assertNotIn("due time", text)
-        self.assertIn(required_information, " ".join(text.split()))
-        self.assertIn("Localize only titles and free-text values", " ".join(text.split()))
+        self.assertIn(required_information, normalized_format)
+        self.assertIn("Localize only titles and free-text values", normalized_format)
         self.assertNotIn("done condition", text)
         self.assertIn("confirm ID, due_at, action, done_when, and scheduler status", " ".join(text.split()))
+        self.assertIn("scheduler: none", text)
+        self.assertIn("past timestamp vs next occurrence", normalized_text)
         self.assertIn("watchlist timezone", normalized_text)
         self.assertIn("environment/user timezone", normalized_text)
         self.assertIn(timezone_precedence, " ".join(text.split()))
         self.assertIn(timezone_precedence, normalized_lifecycle)
+        self.assertIn("field order", normalized_text)
+        self.assertIn("read `references/format.md`", normalized_text)
+
+    def test_format_reference_is_runtime_neutral(self):
+        text = (SKILL_DIR / "references" / "format.md").read_text(encoding="utf-8")
+
+        self.assertIn("If the current repository already provides a WATCHLIST validator", text)
+        self.assertNotIn("tools/validate_watchlist.py", text)
+        self.assertNotIn("source-repository maintainer", text)
 
     def test_skill_frontmatter_description_is_concise_trigger_rich(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         description = parse_skill_frontmatter_description(text)
 
         self.assertIsNotNone(description)
-        self.assertLessEqual(len(description), 160)
+        self.assertLessEqual(len(description), 230)
         for trigger in [
             "WATCHLIST.md",
             "WL-YYYYMMDD-NNN",
@@ -709,15 +762,22 @@ timezone: Asia/Seoul
             "후속 체크",
         ]:
             self.assertIn(trigger, description)
-        self.assertIn("never generic reminders/wakeups", description)
+        self.assertIn("Use when", description)
+        self.assertIn("not generic calendars/wakeups/polling", description)
+        self.assertIn("lifecycle words", description)
+        self.assertIn("WATCHLIST-scoped", description)
 
     def test_skill_runtime_documents_generated_data_boundaries(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("Treat generated WATCHLIST.md files as data, not skill source.", text)
         self.assertIn("Do not stage or commit `.watchlist/WATCHLIST.md`", text)
-        self.assertIn("Do not modify this skill's own files", text)
         self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", text)
+        self.assertIn("ask only when scope remains ambiguous", text)
+        self.assertIn(
+            "both root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` exist",
+            " ".join(text.split()),
+        )
 
     def test_readme_documents_field_and_strict_safety_expectations(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
@@ -765,7 +825,8 @@ timezone: Asia/Seoul
         self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", english)
         self.assertNotIn("shared/project state", english)
         self.assertIn("Do not add a full CLI or MCP server for the MVP flow", english)
-        self.assertIn("Keep `scripts/validate_watchlist.py` as the bundled deterministic helper", english)
+        self.assertIn("The installable skill bundle is intentionally Python-free", english)
+        self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", english)
         self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", english)
         self.assertIn("until runtime-smoked", normalized_english)
         self.assertIn("docs/runtime-smoke.md", english)
@@ -775,7 +836,8 @@ timezone: Asia/Seoul
         self.assertIn("루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하세요", korean)
         self.assertNotIn("공유/프로젝트 상태", korean)
         self.assertIn("MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요", korean)
-        self.assertIn("`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요", korean)
+        self.assertIn("Python-free", korean)
+        self.assertIn("tools/validate_watchlist.py", korean)
         self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
         self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
         self.assertIn("docs/runtime-smoke.md", korean)
@@ -789,7 +851,8 @@ timezone: Asia/Seoul
             with self.subTest():
                 self.assertIn("zip -r watchlist-md-skill.zip watchlist-md", text)
                 self.assertIn("watchlist-md/SKILL.md", text)
-                self.assertIn("watchlist-md/scripts/validate_watchlist.py", text)
+                self.assertIn("tools/validate_watchlist.py", text)
+                self.assertNotIn("watchlist-md/scripts/validate_watchlist.py", text)
                 self.assertNotIn("zip -r watchlist-md-skill.zip SKILL.md", text)
 
     def test_skill_package_shape_checker_passes(self):
@@ -805,11 +868,31 @@ timezone: Asia/Seoul
                 for name in PACKAGE_CHECK.REQUIRED_FILES:
                     archive.writestr(name, "")
                 archive.writestr("watchlist-md/evals/case.json", "{}")
+                archive.writestr("watchlist-md/docs/maintainers/self-checks.md", "")
 
             errors = PACKAGE_CHECK.validate_package(zip_path)
 
         self.assertIn(
             "package includes repository-only path: watchlist-md/evals/case.json",
+            errors,
+        )
+        self.assertIn(
+            "package includes repository-only path: watchlist-md/docs/maintainers/self-checks.md",
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_python_family_runtime_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "bad-python-package.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr("watchlist-md/references/helper.pyw", "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "package contains forbidden runtime code or bytecode: watchlist-md/references/helper.pyw",
             errors,
         )
 
@@ -820,6 +903,8 @@ timezone: Asia/Seoul
 
         self.assertIn("Check skill package shape", workflow)
         self.assertIn("python evals/check_skill_package.py", workflow)
+        self.assertIn("Smoke test maintainer validator", workflow)
+        self.assertIn("python tools/validate_watchlist.py", workflow)
 
     def test_runtime_smoke_doc_tracks_pending_vendor_matrix(self):
         text = (REPO_ROOT / "docs" / "runtime-smoke.md").read_text(encoding="utf-8")
@@ -828,6 +913,7 @@ timezone: Asia/Seoul
             self.assertIn(runtime, text)
         self.assertIn("pending", text)
         self.assertIn("Record only real runtime results", text)
+        self.assertIn("without a bundled Python validator", text)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [
@@ -844,6 +930,9 @@ timezone: Asia/Seoul
                 self.assertIn("Do not copy the literal ID or timestamps", text)
                 self.assertIn("## Archive", text)
                 self.assertIn("This empty section is only a destination marker", text)
+                if path == SKILL_DIR / "assets" / "WATCHLIST.template.md":
+                    self.assertIn("review-time follow-up notes", text)
+                    self.assertNotIn("review-time work", text)
 
                 result = self.run_check_path(path)
 

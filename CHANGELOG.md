@@ -15,6 +15,12 @@
   vendor runtime checks.
 - Clarified README introductions and audience guidance for agent-skill discovery.
 
+### Changed
+
+- Made the installable skill bundle py-free and slimmer by moving the WATCHLIST
+  validator and self-check prompts to source-repository maintainer tooling,
+  trimming `SKILL.md`, tightening package guards, and preserving CI validation.
+
 ## [0.4.2] - 2026-06-10
 
 ### Changed

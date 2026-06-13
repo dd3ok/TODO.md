@@ -44,10 +44,11 @@ python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 .agents/skills/watchlist-md/SKILL.md
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
-.agents/skills/watchlist-md/references/self-checks.md
+.agents/skills/watchlist-md/references/format.md
 .agents/skills/watchlist-md/references/lifecycle.md
 .agents/skills/watchlist-md/references/safety.md
-.agents/skills/watchlist-md/scripts/validate_watchlist.py
+docs/maintainers/self-checks.md
+tools/validate_watchlist.py
 examples/WATCHLIST.example.md
 .watchlist/.gitkeep
 evals/
@@ -66,7 +67,7 @@ Use root `WATCHLIST.md` only for explicitly shared team state. Shared watchlists
 should avoid personal notes, private operational details, sensitive links, raw
 logs, raw emails, and private excerpts.
 
-Do not add a full CLI or MCP server for the MVP flow. Keep `scripts/validate_watchlist.py` as the bundled deterministic helper; agents can edit Markdown directly using this contract and then run the validator.
+Do not add a full CLI or MCP server for the MVP flow. The installable skill bundle is intentionally Python-free; agents edit Markdown directly using the documented contract, and source-repository maintainers run `tools/validate_watchlist.py` or `evals/check_watchlist.py` for deterministic checks.
 
 ## Installation Philosophy
 
@@ -103,13 +104,11 @@ When the skill creates `.watchlist/WATCHLIST.md`, Git should ignore it in this s
 
 The installable skill bundle also includes `assets/WATCHLIST.template.md`, so an agent can create a new WATCHLIST.md even when only `.agents/skills/watchlist-md` is installed.
 
-The installable skill bundle also includes `scripts/validate_watchlist.py`, so validation works after installing only the skill directory:
+The installable skill bundle does not include a runtime validator. It includes `references/format.md` for manual checks. This source repository keeps deterministic maintainer validation in `tools/validate_watchlist.py`, exposed through `evals/check_watchlist.py`.
 
 ```bash
-python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 ```
-
-The repository-level `evals/check_watchlist.py` entrypoint delegates to the bundled validator so validation rules stay single-sourced.
 
 Personal or private watchlists should not be committed by default. If the notes are workspace-only, use a user-local ignore rule.
 
@@ -187,7 +186,7 @@ cd .agents/skills
 zip -r watchlist-md-skill.zip watchlist-md
 ```
 
-Upload the resulting zip through the OpenAI skill management UI or workflow you are using. The archive should contain `watchlist-md/SKILL.md` at its top-level folder. The bundled validator is included under `watchlist-md/scripts/validate_watchlist.py`; repository-level `evals/` are only for this source repo.
+Upload the resulting zip through the OpenAI skill management UI or workflow you are using. The archive should contain `watchlist-md/SKILL.md` at its top-level folder. The uploaded skill bundle is Python-free. Repository-level `tools/` and `evals/` are only for this source repo's maintainer checks.
 
 Test:
 
@@ -228,7 +227,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py

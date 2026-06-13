@@ -15,14 +15,21 @@ REQUIRED_FILES = {
     "watchlist-md/SKILL.md",
     "watchlist-md/agents/openai.yaml",
     "watchlist-md/assets/WATCHLIST.template.md",
+    "watchlist-md/references/format.md",
     "watchlist-md/references/lifecycle.md",
     "watchlist-md/references/safety.md",
-    "watchlist-md/references/self-checks.md",
-    "watchlist-md/scripts/validate_watchlist.py",
 }
-FORBIDDEN_PARTS = {"__pycache__", ".pytest_cache"}
-FORBIDDEN_SUFFIXES = {".pyc", ".pyo"}
-REPOSITORY_ONLY_PARTS = {"evals", ".github", ".git", ".watchlist", "examples"}
+FORBIDDEN_PARTS = {"__pycache__", ".pytest_cache", "scripts"}
+FORBIDDEN_SUFFIXES = {".py", ".pyw", ".pyc", ".pyo"}
+REPOSITORY_ONLY_PARTS = {
+    "evals",
+    ".github",
+    ".git",
+    ".watchlist",
+    "examples",
+    "tools",
+    "docs",
+}
 
 
 def fail(message: str) -> int:
@@ -61,9 +68,9 @@ def validate_package(zip_path: Path) -> list[str]:
         path_parts = Path(name).parts
         package_relative_parts = path_parts[1:] if path_parts[:1] == (PACKAGE_ROOT,) else path_parts
         if parts.intersection(FORBIDDEN_PARTS):
-            errors.append(f"package contains generated cache path: {name}")
+            errors.append(f"package contains forbidden package path: {name}")
         if Path(name).suffix in FORBIDDEN_SUFFIXES:
-            errors.append(f"package contains Python bytecode: {name}")
+            errors.append(f"package contains forbidden runtime code or bytecode: {name}")
         if package_relative_parts and package_relative_parts[0] in REPOSITORY_ONLY_PARTS:
             errors.append(f"package includes repository-only path: {name}")
 
