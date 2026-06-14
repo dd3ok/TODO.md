@@ -44,10 +44,11 @@ python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 .agents/skills/watchlist-md/SKILL.md
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
-.agents/skills/watchlist-md/references/self-checks.md
+.agents/skills/watchlist-md/references/format.md
 .agents/skills/watchlist-md/references/lifecycle.md
 .agents/skills/watchlist-md/references/safety.md
-.agents/skills/watchlist-md/scripts/validate_watchlist.py
+docs/maintainers/self-checks.md
+tools/validate_watchlist.py
 examples/WATCHLIST.example.md
 .watchlist/.gitkeep
 evals/
@@ -67,8 +68,10 @@ evals/
 원문 이메일, 비공개 발췌가 없어야 합니다.
 
 MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요.
-`scripts/validate_watchlist.py`는 번들된 결정적 helper로 유지하세요. 에이전트는
-이 계약에 따라 Markdown을 직접 수정한 뒤 validator를 실행할 수 있습니다.
+설치 가능한 스킬 번들은 의도적으로 Python-free입니다. 에이전트는 문서화된
+계약에 따라 Markdown을 직접 수정하고, source-repository maintainer는
+`tools/validate_watchlist.py` 또는 `evals/check_watchlist.py`로 결정적 검사를
+실행합니다.
 
 ## 설치 철학
 
@@ -105,13 +108,14 @@ $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents
 
 설치 가능한 스킬 번들에는 `assets/WATCHLIST.template.md`도 포함되어 있으므로, `.agents/skills/watchlist-md`만 설치된 경우에도 에이전트가 새 WATCHLIST.md를 생성할 수 있습니다.
 
-설치 가능한 스킬 번들에는 `scripts/validate_watchlist.py`도 포함되어, 스킬 디렉토리만 설치해도 검증을 실행할 수 있습니다:
+설치 가능한 스킬 번들에는 runtime validator가 포함되지 않습니다. 대신 수동
+검사를 위한 `references/format.md`가 포함됩니다. 이 source repository는
+`tools/validate_watchlist.py`에 결정적 maintainer validation을 보관하고,
+`evals/check_watchlist.py`를 통해 노출합니다.
 
 ```bash
-python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 ```
-
-리포지토리 레벨 `evals/check_watchlist.py` entrypoint는 번들 validator에 위임하므로 검증 규칙은 한 곳에서 관리됩니다.
 
 개인 또는 비공개 워치리스트는 기본적으로 커밋되어서는 안 됩니다. 노트가 작업 공간 전용인 경우 사용자 로컬 무시 규칙을 사용하세요.
 
@@ -189,7 +193,7 @@ cd .agents/skills
 zip -r watchlist-md-skill.zip watchlist-md
 ```
 
-생성된 zip을 사용 중인 OpenAI skill 관리 UI 또는 workflow에 업로드하세요. archive는 top-level 폴더 아래 `watchlist-md/SKILL.md`를 포함해야 합니다. bundled validator는 `watchlist-md/scripts/validate_watchlist.py`에 포함되어 있고, repository-level `evals/`는 이 source repo 검증용입니다.
+생성된 zip을 사용 중인 OpenAI skill 관리 UI 또는 workflow에 업로드하세요. archive는 top-level 폴더 아래 `watchlist-md/SKILL.md`를 포함해야 합니다. 업로드되는 스킬 번들은 Python-free입니다. repository-level `tools/`와 `evals/`는 이 source repo의 maintainer checks 전용입니다.
 
 테스트:
 
@@ -230,7 +234,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
 python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-python3 .agents/skills/watchlist-md/scripts/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py

@@ -1,6 +1,6 @@
 # Runtime Smoke Matrix
 
-This file tracks manual smoke checks in real agent runtimes. Record only real runtime results; do not mark a row as pass based on README guidance, CI, or the bundled validator alone.
+This file tracks manual smoke checks in real agent runtimes. Record only real runtime results; do not mark a row as pass based on README guidance or CI alone.
 
 ## Matrix
 
@@ -20,5 +20,6 @@ This file tracks manual smoke checks in real agent runtimes. Record only real ru
   reminders or wakeups.
 - Generated `.watchlist/WATCHLIST.md` data stays local/private unless explicitly
   shared.
-- The bundled `scripts/validate_watchlist.py` can validate the resulting file
-  when filesystem access is available.
+- The installed skill works without a bundled Python validator.
+- Source-repository maintainer validation can be run separately with
+  `python tools/validate_watchlist.py` or `python evals/check_watchlist.py`.

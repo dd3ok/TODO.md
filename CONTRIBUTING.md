@@ -14,7 +14,9 @@ When changing WATCHLIST lifecycle behavior, update:
 - `evals/test_check_watchlist.py`
 - `CHANGELOG.md`
 
-When changing the validator, add or update unit tests first, then run:
+When changing the validator, add or update unit tests first, then run the source
+repository maintainer checks. These Python commands are not runtime install
+prerequisites for the py-free skill bundle.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
@@ -23,6 +25,7 @@ python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.te
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py
+python3 evals/check_skill_package.py
 ```
 
 Do not add secrets, signed URLs, tokenized URLs, raw logs, raw emails, or private dashboard excerpts to examples, tests, or watchlist entries.
