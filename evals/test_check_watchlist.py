@@ -763,6 +763,7 @@ timezone: Asia/Seoul
         ]:
             self.assertIn(trigger, description)
         self.assertIn("Use when", description)
+        self.assertIn("updating", description)
         self.assertIn("not generic calendars/wakeups/polling", description)
         self.assertIn("lifecycle words", description)
         self.assertIn("WATCHLIST-scoped", description)
@@ -773,9 +774,11 @@ timezone: Asia/Seoul
         self.assertIn("Treat generated WATCHLIST.md files as data, not skill source.", text)
         self.assertIn("Do not stage or commit `.watchlist/WATCHLIST.md`", text)
         self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", text)
-        self.assertIn("ask only when scope remains ambiguous", text)
         self.assertIn(
-            "both root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` exist",
+            (
+                "If both root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` exist "
+                "and scope remains unclear, mention both and ask before writing."
+            ),
             " ".join(text.split()),
         )
 
@@ -893,6 +896,31 @@ timezone: Asia/Seoul
 
         self.assertIn(
             "package contains forbidden runtime code or bytecode: watchlist-md/references/helper.pyw",
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_case_variant_forbidden_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "bad-case-package.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr("watchlist-md/references/helper.PY", "")
+                archive.writestr("watchlist-md/SCRIPTS/helper.txt", "")
+                archive.writestr("watchlist-md/TOOLS/validator.txt", "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "package contains forbidden runtime code or bytecode: watchlist-md/references/helper.PY",
+            errors,
+        )
+        self.assertIn(
+            "package contains forbidden package path: watchlist-md/SCRIPTS/helper.txt",
+            errors,
+        )
+        self.assertIn(
+            "package includes repository-only path: watchlist-md/TOOLS/validator.txt",
             errors,
         )
 

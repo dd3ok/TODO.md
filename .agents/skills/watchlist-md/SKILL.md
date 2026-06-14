@@ -1,7 +1,7 @@
 ---
 name: watchlist-md
 description: >-
-  Use when recording or reviewing WATCHLIST.md/WL-YYYYMMDD-NNN deferred checks for CI/deploy/job/sync/order/PR/ticket/email 후속 체크; not generic calendars/wakeups/polling or lifecycle words unless WATCHLIST-scoped.
+  Use when recording, reviewing, or updating WATCHLIST.md/WL-YYYYMMDD-NNN deferred checks for CI/deploy/job/sync/order/PR/ticket/email 후속 체크; not generic calendars/wakeups/polling or lifecycle words unless WATCHLIST-scoped.
 ---
 
 # WATCHLIST.md
@@ -28,9 +28,9 @@ Pick target by path, convention, privacy scope:
 4. For new repo-private notes, prefer `.watchlist/WATCHLIST.md`.
 5. Use `$HOME/.watchlist/WATCHLIST.md` only for personal cross-repo items.
 
-For writes, resolve by these rules; ask only when scope remains ambiguous or both
-root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` exist. Create from
-`assets/WATCHLIST.template.md` if needed; preserve unrelated content. Do not stage or commit `.watchlist/WATCHLIST.md` unless explicitly shared. Treat generated WATCHLIST.md files as data, not skill source.
+For writes, resolve by these rules. If both root `WATCHLIST.md` and
+`.watchlist/WATCHLIST.md` exist and scope remains unclear, mention both and ask before writing.
+Create from `assets/WATCHLIST.template.md` if needed; preserve unrelated content. Do not stage or commit `.watchlist/WATCHLIST.md` unless explicitly shared. Treat generated WATCHLIST.md files as data, not skill source.
 
 ## Add
 

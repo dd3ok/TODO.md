@@ -64,14 +64,14 @@ def validate_package(zip_path: Path) -> list[str]:
         errors.append("missing required package file(s): " + ", ".join(missing))
 
     for name in sorted(names):
-        parts = set(Path(name).parts)
+        parts = {part.lower() for part in Path(name).parts}
         path_parts = Path(name).parts
         package_relative_parts = path_parts[1:] if path_parts[:1] == (PACKAGE_ROOT,) else path_parts
         if parts.intersection(FORBIDDEN_PARTS):
             errors.append(f"package contains forbidden package path: {name}")
-        if Path(name).suffix in FORBIDDEN_SUFFIXES:
+        if Path(name).suffix.lower() in FORBIDDEN_SUFFIXES:
             errors.append(f"package contains forbidden runtime code or bytecode: {name}")
-        if package_relative_parts and package_relative_parts[0] in REPOSITORY_ONLY_PARTS:
+        if package_relative_parts and package_relative_parts[0].lower() in REPOSITORY_ONLY_PARTS:
             errors.append(f"package includes repository-only path: {name}")
 
     return errors
