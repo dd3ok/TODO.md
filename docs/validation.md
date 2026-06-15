@@ -23,7 +23,7 @@ python3 evals/check_skill_package.py
 ### Example Item
 
 ```md
-### WL-20260507-001 - Check error logs after deployment
+### WL-20260507-001 — Check error logs after deployment
 - status: open
 - priority: P1
 - owner: assistant_on_review

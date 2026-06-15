@@ -58,6 +58,7 @@ CHECKS = {
         "Required values for open items",
         "`--strict-safety` is intentionally conservative",
         "The validator requires every field key",
+        "### WL-20260507-001 — Check error logs after deployment",
         "python3 evals/check_semantic_cases.py",
         "Semantic case checker",
         "Example Item",

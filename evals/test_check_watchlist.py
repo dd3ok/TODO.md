@@ -796,10 +796,14 @@ timezone: Asia/Seoul
         self.assertIn("Recommended when known", validation)
         self.assertIn("Normally blank until checked", validation)
         self.assertIn("`--strict-safety` is intentionally conservative", validation)
+        self.assertIn("### WL-20260507-001 — Check error logs after deployment", validation)
+        self.assertNotIn("### WL-20260507-001 - Check error logs after deployment", validation)
 
     def test_readmes_are_short_landing_pages_with_deep_doc_links(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+        normalized_english = " ".join(english.split())
+        normalized_korean = " ".join(korean.split())
 
         self.assertLessEqual(len(english.splitlines()), 120)
         self.assertLessEqual(len(korean.splitlines()), 120)
@@ -816,6 +820,9 @@ timezone: Asia/Seoul
         self.assertIn("docs/storage-and-privacy.md", english)
         self.assertIn("docs/validation.md", english)
         self.assertIn("docs/maintainers/release.md", english)
+        self.assertIn("until runtime-smoked", normalized_english)
+        self.assertIn("docs/runtime-smoke.md", english)
+        self.assertIn("not the repository root", normalized_english)
 
         self.assertIn("AgentSkills 호환 Markdown workflow", korean)
         self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes", korean)
@@ -830,6 +837,9 @@ timezone: Asia/Seoul
         self.assertIn("docs/storage-and-privacy.md", korean)
         self.assertIn("docs/validation.md", korean)
         self.assertIn("docs/maintainers/release.md", korean)
+        self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
+        self.assertIn("docs/runtime-smoke.md", korean)
+        self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
         moved_headings = [
             "## Generated WATCHLIST Files",
@@ -852,8 +862,6 @@ timezone: Asia/Seoul
         storage = (REPO_ROOT / "docs" / "storage-and-privacy.md").read_text(
             encoding="utf-8"
         )
-        normalized_english = " ".join(english.split())
-        normalized_korean = " ".join(korean.split())
 
         self.assertIn("docs/storage-and-privacy.md", english)
         self.assertIn("docs/storage-and-privacy.md", korean)
@@ -865,12 +873,6 @@ timezone: Asia/Seoul
         self.assertIn("The installable skill bundle is intentionally Python-free", storage)
         self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", storage)
         self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", storage)
-        self.assertIn("until runtime-smoked", normalized_english)
-        self.assertIn("docs/runtime-smoke.md", english)
-        self.assertIn("not the repository root", normalized_english)
-        self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
-        self.assertIn("docs/runtime-smoke.md", korean)
-        self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
     def test_install_and_release_docs_openai_zip_packaging_uses_one_top_level_skill_folder(self):
         install = (REPO_ROOT / "docs" / "install.md").read_text(encoding="utf-8")
