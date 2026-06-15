@@ -719,7 +719,15 @@ def validate_trigger_case_list(cases: object, errors: list[str]) -> int:
         if not TRIGGER_CASE_KEYS.issubset(case):
             continue
 
-        case_id = str(case["id"])
+        case_id_val = case.get("id")
+        if not isinstance(case_id_val, str) or not case_id_val.strip():
+            errors.append(f"{case_id}: id must be a non-empty string")
+            continue
+        if case_id_val != case_id_val.strip():
+            errors.append(f"{case_id}: id must not have leading or trailing whitespace")
+            continue
+
+        case_id = case_id_val
         if case_id in seen_ids:
             errors.append(f"{case_id}: duplicate trigger case id")
         seen_ids.add(case_id)

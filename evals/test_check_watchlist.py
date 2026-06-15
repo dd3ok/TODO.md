@@ -1162,6 +1162,55 @@ timezone: Asia/Seoul
             errors,
         )
 
+    def test_trigger_case_validation_rejects_invalid_id(self):
+        cases = [
+            {
+                "id": f"trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Add this to WATCHLIST.md for sample {index}.",
+                "expected": "trigger",
+                "reason": "explicit_watchlist_add",
+            }
+            for index in range(9)
+        ]
+        cases.extend(
+            {
+                "id": f"no-trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Remind me about sample {index} tomorrow.",
+                "expected": "no_trigger",
+                "reason": "generic_reminder_without_watchlist",
+            }
+            for index in range(9)
+        )
+        cases.extend(
+            [
+                {
+                    "id": 123,
+                    "locale": "en",
+                    "prompt": "Add this to WATCHLIST.md.",
+                    "expected": "trigger",
+                    "reason": "explicit_watchlist_add",
+                },
+                {
+                    "id": " whitespace-id ",
+                    "locale": "en",
+                    "prompt": "Remind me tomorrow at 9.",
+                    "expected": "no_trigger",
+                    "reason": "generic_reminder_without_watchlist",
+                },
+            ]
+        )
+        errors = []
+
+        SEMANTIC_CASES.validate_trigger_case_list(cases, errors)
+
+        self.assertIn("trigger_cases[18]: id must be a non-empty string", errors)
+        self.assertIn(
+            "trigger_cases[19]: id must not have leading or trailing whitespace",
+            errors,
+        )
+
     def test_false_trigger_semantic_case_validates_optional_must_not_list(self):
         case = {
             "id": "sample-case",
