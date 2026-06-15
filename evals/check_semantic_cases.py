@@ -17,6 +17,7 @@ FIXTURES_DIR = ROOT / "evals" / "fixtures"
 PROMPTS_CSV = ROOT / "evals" / "prompts.csv"
 SELF_CHECKS = ROOT / "evals" / "self_checks.yaml"
 CHECK_WATCHLIST = ROOT / "evals" / "check_watchlist.py"
+TRIGGER_CASES = ROOT / "evals" / "trigger_cases.json"
 
 AUTONOMOUS_REMINDER_FORBIDDEN = {
     "I'll remind you",
@@ -61,6 +62,48 @@ SUPPORTED_CATEGORIES = {
     "skill-trigger",
     "storage-policy",
     "agent-workflow-safety",
+}
+SUPPORTED_TRIGGER_REASONS = {
+    "ambiguous_watchlist_target",
+    "explicit_watchlist_add",
+    "generic_delete_without_watchlist",
+    "generic_lifecycle_without_watchlist",
+    "generic_now_check_without_watchlist",
+    "generic_reminder_without_watchlist",
+    "local_private_watchlist_record",
+    "non_watchlist_wl_text",
+    "preauthorized_watchlist_workflow",
+    "scheduler_without_watchlist",
+    "secret_storage_without_watchlist",
+    "watchlist_list_review",
+    "watchlist_scoped_pending_result",
+    "wl_item_lifecycle_update",
+}
+REQUIRED_TRIGGER_REASONS = {
+    "explicit_watchlist_add",
+    "wl_item_lifecycle_update",
+    "watchlist_list_review",
+    "generic_reminder_without_watchlist",
+    "generic_now_check_without_watchlist",
+    "generic_lifecycle_without_watchlist",
+    "non_watchlist_wl_text",
+}
+TRIGGER_CASE_KEYS = {"id", "locale", "prompt", "expected", "reason"}
+TRIGGER_REASON_EXPECTED = {
+    "ambiguous_watchlist_target": "trigger",
+    "explicit_watchlist_add": "trigger",
+    "generic_delete_without_watchlist": "no_trigger",
+    "generic_lifecycle_without_watchlist": "no_trigger",
+    "generic_now_check_without_watchlist": "no_trigger",
+    "generic_reminder_without_watchlist": "no_trigger",
+    "local_private_watchlist_record": "trigger",
+    "non_watchlist_wl_text": "no_trigger",
+    "preauthorized_watchlist_workflow": "trigger",
+    "scheduler_without_watchlist": "no_trigger",
+    "secret_storage_without_watchlist": "no_trigger",
+    "watchlist_list_review": "trigger",
+    "watchlist_scoped_pending_result": "trigger",
+    "wl_item_lifecycle_update": "trigger",
 }
 
 
@@ -652,6 +695,97 @@ def validate_case(
     validate_storage_contract(case_id, case, expected, errors)
 
 
+def validate_trigger_case_list(cases: object, errors: list[str]) -> int:
+    if not isinstance(cases, list):
+        errors.append("trigger_cases.json: root value must be a list")
+        return 0
+    if not 20 <= len(cases) <= 30:
+        errors.append("trigger_cases.json: expected 20 to 30 lightweight cases")
+
+    seen_ids: set[str] = set()
+    decisions = {"trigger": 0, "no_trigger": 0}
+    reasons: set[str] = set()
+    for index, case in enumerate(cases):
+        case_id = f"trigger_cases[{index}]"
+        if not isinstance(case, dict):
+            errors.append(f"{case_id}: case must be an object")
+            continue
+
+        extra_keys = sorted(set(case) - TRIGGER_CASE_KEYS)
+        if extra_keys:
+            errors.append(f"{case_id}: unsupported key(s): {', '.join(extra_keys)}")
+
+        require_keys(case, TRIGGER_CASE_KEYS, case_id, errors, "trigger case")
+        if not TRIGGER_CASE_KEYS.issubset(case):
+            continue
+
+        case_id_val = case.get("id")
+        if not isinstance(case_id_val, str) or not case_id_val.strip():
+            errors.append(f"{case_id}: id must be a non-empty string")
+            continue
+        if case_id_val != case_id_val.strip():
+            errors.append(f"{case_id}: id must not have leading or trailing whitespace")
+            continue
+
+        case_id = case_id_val
+        if case_id in seen_ids:
+            errors.append(f"{case_id}: duplicate trigger case id")
+        seen_ids.add(case_id)
+
+        if case.get("locale") not in {"ko", "en", "mixed"}:
+            errors.append(f"{case_id}: locale must be ko, en, or mixed")
+
+        prompt = case.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            errors.append(f"{case_id}: prompt must be a non-empty string")
+        elif len(prompt) > 180:
+            errors.append(f"{case_id}: prompt is too long for lightweight trigger eval")
+
+        expected = case.get("expected")
+        if expected not in decisions:
+            errors.append(f"{case_id}: expected must be trigger or no_trigger")
+        else:
+            decisions[str(expected)] += 1
+
+        reason = case.get("reason")
+        if reason not in SUPPORTED_TRIGGER_REASONS:
+            errors.append(f"{case_id}: unsupported trigger reason: {reason}")
+        else:
+            reasons.add(str(reason))
+            expected_for_reason = TRIGGER_REASON_EXPECTED[str(reason)]
+            if expected != expected_for_reason:
+                errors.append(
+                    f"{case_id}: reason {reason} must use expected={expected_for_reason}"
+                )
+
+    for decision, count in decisions.items():
+        if count < 8:
+            errors.append(f"trigger_cases.json: expected at least 8 {decision} cases")
+
+    missing_reasons = sorted(REQUIRED_TRIGGER_REASONS - reasons)
+    if missing_reasons:
+        errors.append(
+            "trigger_cases.json: missing required trigger reason(s): "
+            + ", ".join(missing_reasons)
+        )
+
+    return len(cases)
+
+
+def validate_trigger_cases(errors: list[str]) -> int:
+    if not TRIGGER_CASES.is_file():
+        errors.append(f"Missing trigger eval corpus: {TRIGGER_CASES.relative_to(ROOT)}")
+        return 0
+
+    try:
+        cases = json.loads(TRIGGER_CASES.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        errors.append(f"trigger_cases.json: invalid JSON: {exc}")
+        return 0
+
+    return validate_trigger_case_list(cases, errors)
+
+
 def main() -> int:
     errors: list[str] = []
     if not CASES_DIR.is_dir():
@@ -689,10 +823,15 @@ def main() -> int:
             f"Missing semantic case(s) for self_checks.yaml: {', '.join(missing_self_check_cases)}"
         )
 
+    trigger_case_count = validate_trigger_cases(errors)
+
     if errors:
         return fail("Semantic case check failed:\n" + "\n".join(f"- {error}" for error in errors))
 
-    print(f"Semantic case check passed: {len(case_paths)} case(s)")
+    print(
+        f"Semantic case check passed: {len(case_paths)} case(s); "
+        f"{trigger_case_count} trigger case(s)"
+    )
     return 0
 
 

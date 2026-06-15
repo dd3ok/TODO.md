@@ -21,6 +21,7 @@ RELEASE_SCRIPT = REPO_ROOT / "evals" / "check_release_metadata.py"
 SEMANTIC_SCRIPT = REPO_ROOT / "evals" / "check_semantic_cases.py"
 PACKAGE_SCRIPT = REPO_ROOT / "evals" / "check_skill_package.py"
 REPO_VALIDATOR = REPO_ROOT / "tools" / "validate_watchlist.py"
+TRIGGER_CASES = REPO_ROOT / "evals" / "trigger_cases.json"
 
 _SEMANTIC_SPEC = importlib.util.spec_from_file_location(
     "check_semantic_cases", SEMANTIC_SCRIPT
@@ -941,7 +942,53 @@ timezone: Asia/Seoul
             self.assertIn(runtime, text)
         self.assertIn("pending", text)
         self.assertIn("Record only real runtime results", text)
+        self.assertIn("Do not store transcripts, screenshots, raw logs, or long runtime output.", text)
         self.assertIn("without a bundled Python validator", text)
+        self.assertLessEqual(len(text.splitlines()), 35)
+
+    def test_trigger_eval_corpus_is_small_balanced_and_deterministic(self):
+        cases = json.loads(TRIGGER_CASES.read_text(encoding="utf-8"))
+
+        self.assertGreaterEqual(len(cases), 20)
+        self.assertLessEqual(len(cases), 30)
+
+        decisions = {case["expected"] for case in cases}
+        self.assertEqual(decisions, {"trigger", "no_trigger"})
+        self.assertGreaterEqual(
+            sum(1 for case in cases if case["expected"] == "trigger"),
+            8,
+        )
+        self.assertGreaterEqual(
+            sum(1 for case in cases if case["expected"] == "no_trigger"),
+            8,
+        )
+
+        reasons = {case["reason"] for case in cases}
+        for reason in [
+            "explicit_watchlist_add",
+            "wl_item_lifecycle_update",
+            "watchlist_list_review",
+            "generic_reminder_without_watchlist",
+            "generic_now_check_without_watchlist",
+            "generic_lifecycle_without_watchlist",
+            "non_watchlist_wl_text",
+        ]:
+            self.assertIn(reason, reasons)
+
+        forbidden_fields = {
+            "actual",
+            "response",
+            "runtime",
+            "runtime_output",
+            "transcript",
+            "screenshot",
+            "logs",
+        }
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                self.assertEqual(set(case), {"id", "locale", "prompt", "expected", "reason"})
+                self.assertFalse(forbidden_fields.intersection(case))
+                self.assertLessEqual(len(case["prompt"]), 180)
 
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [
@@ -1063,6 +1110,107 @@ timezone: Asia/Seoul
 
         self.assertIn("sample-case: category is unsupported: workflow-safety", errors)
 
+    def test_trigger_case_validation_rejects_reason_polarity_drift(self):
+        cases = [
+            {
+                "id": f"trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Add this to WATCHLIST.md for sample {index}.",
+                "expected": "trigger",
+                "reason": "explicit_watchlist_add",
+            }
+            for index in range(9)
+        ]
+        cases.extend(
+            {
+                "id": f"no-trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Remind me about sample {index} tomorrow.",
+                "expected": "no_trigger",
+                "reason": "generic_reminder_without_watchlist",
+            }
+            for index in range(9)
+        )
+        cases.extend(
+            [
+                {
+                    "id": "wrong-polarity-trigger",
+                    "locale": "en",
+                    "prompt": "Remind me tomorrow at 9.",
+                    "expected": "trigger",
+                    "reason": "generic_reminder_without_watchlist",
+                },
+                {
+                    "id": "wrong-polarity-no-trigger",
+                    "locale": "en",
+                    "prompt": "Add this to WATCHLIST.md.",
+                    "expected": "no_trigger",
+                    "reason": "explicit_watchlist_add",
+                },
+            ]
+        )
+        errors = []
+
+        SEMANTIC_CASES.validate_trigger_case_list(cases, errors)
+
+        self.assertIn(
+            "wrong-polarity-trigger: reason generic_reminder_without_watchlist must use expected=no_trigger",
+            errors,
+        )
+        self.assertIn(
+            "wrong-polarity-no-trigger: reason explicit_watchlist_add must use expected=trigger",
+            errors,
+        )
+
+    def test_trigger_case_validation_rejects_invalid_id(self):
+        cases = [
+            {
+                "id": f"trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Add this to WATCHLIST.md for sample {index}.",
+                "expected": "trigger",
+                "reason": "explicit_watchlist_add",
+            }
+            for index in range(9)
+        ]
+        cases.extend(
+            {
+                "id": f"no-trigger-sample-{index}",
+                "locale": "en",
+                "prompt": f"Remind me about sample {index} tomorrow.",
+                "expected": "no_trigger",
+                "reason": "generic_reminder_without_watchlist",
+            }
+            for index in range(9)
+        )
+        cases.extend(
+            [
+                {
+                    "id": 123,
+                    "locale": "en",
+                    "prompt": "Add this to WATCHLIST.md.",
+                    "expected": "trigger",
+                    "reason": "explicit_watchlist_add",
+                },
+                {
+                    "id": " whitespace-id ",
+                    "locale": "en",
+                    "prompt": "Remind me tomorrow at 9.",
+                    "expected": "no_trigger",
+                    "reason": "generic_reminder_without_watchlist",
+                },
+            ]
+        )
+        errors = []
+
+        SEMANTIC_CASES.validate_trigger_case_list(cases, errors)
+
+        self.assertIn("trigger_cases[18]: id must be a non-empty string", errors)
+        self.assertIn(
+            "trigger_cases[19]: id must not have leading or trailing whitespace",
+            errors,
+        )
+
     def test_false_trigger_semantic_case_validates_optional_must_not_list(self):
         case = {
             "id": "sample-case",
@@ -1115,6 +1263,7 @@ timezone: Asia/Seoul
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Semantic case check passed", result.stdout)
+        self.assertIn("trigger case(s)", result.stdout)
 
     def test_semantic_self_check_parser_supports_single_quoted_prompts(self):
         text = """cases:
