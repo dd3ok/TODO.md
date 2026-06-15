@@ -1,6 +1,6 @@
 # Runtime Smoke Matrix
 
-This file tracks manual smoke checks in real agent runtimes. Record only real runtime results; do not mark a row as pass based on README guidance or CI alone.
+This file tracks manual smoke checks in real agent runtimes. Record only real runtime results; do not mark a row as pass based on README guidance or CI alone. Do not store transcripts, screenshots, raw logs, or long runtime output.
 
 ## Matrix
 
