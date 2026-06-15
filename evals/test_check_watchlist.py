@@ -783,75 +783,120 @@ timezone: Asia/Seoul
             " ".join(text.split()),
         )
 
-    def test_readme_documents_field_and_strict_safety_expectations(self):
+    def test_validation_doc_owns_field_and_strict_safety_expectations(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+        validation = (REPO_ROOT / "docs" / "validation.md").read_text(encoding="utf-8")
 
-        self.assertIn("The validator requires every field key", english)
-        self.assertIn("Required values for open items", english)
-        self.assertIn("`source`, `trigger`, `action`, and `done_when`", english)
-        self.assertIn("Recommended when known", english)
-        self.assertIn("Normally blank until checked", english)
-        self.assertIn("`--strict-safety` is intentionally conservative", english)
-        self.assertIn("검증기는 모든 필드 키를 요구합니다", korean)
-        self.assertIn("open 항목의 필수 값", korean)
-        self.assertIn("`source`, `trigger`, `action`, `done_when`", korean)
-        self.assertIn("알 수 있으면 권장되는 값", korean)
-        self.assertIn("확인 전에는 보통 비워 둡니다", korean)
-        self.assertIn("`--strict-safety`는 의도적으로 보수적입니다", korean)
+        self.assertIn("docs/validation.md", english)
+        self.assertIn("docs/validation.md", korean)
+        self.assertIn("The validator requires every field key", validation)
+        self.assertIn("Required values for open items", validation)
+        self.assertIn("`source`, `trigger`, `action`, and `done_when`", validation)
+        self.assertIn("Recommended when known", validation)
+        self.assertIn("Normally blank until checked", validation)
+        self.assertIn("`--strict-safety` is intentionally conservative", validation)
+        self.assertIn("### WL-20260507-001 — Check error logs after deployment", validation)
+        self.assertNotIn("### WL-20260507-001 - Check error logs after deployment", validation)
 
-    def test_readme_intro_and_audience_are_search_discoverable(self):
-        english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-        korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
-
-        self.assertIn("AgentSkills-compatible Markdown workflow", english)
-        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes", english)
-        self.assertIn("not an autonomous scheduler", english)
-        self.assertIn("## Who Is This For?", english)
-        self.assertIn("CI follow-ups, deployment verification, PR checks", english)
-        self.assertIn("without creating a scheduler, daemon, database, or MCP server", english)
-
-        self.assertIn("AgentSkills 호환 Markdown workflow", korean)
-        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes", korean)
-        self.assertIn("자율 알림", korean)
-        self.assertIn("## 누구를 위한 도구인가요?", korean)
-        self.assertIn("CI 후속 확인, 배포 검증, PR 확인", korean)
-        self.assertIn("scheduler, daemon, database, MCP server", korean)
-
-    def test_readme_documents_generated_file_policy(self):
+    def test_readmes_are_short_landing_pages_with_deep_doc_links(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
         normalized_english = " ".join(english.split())
         normalized_korean = " ".join(korean.split())
 
-        self.assertIn("Generated WATCHLIST Files", english)
-        self.assertIn("Generated `.watchlist/WATCHLIST.md` files are local/private data by default", english)
-        self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", english)
-        self.assertNotIn("shared/project state", english)
-        self.assertIn("Do not add a full CLI or MCP server for the MVP flow", english)
-        self.assertIn("The installable skill bundle is intentionally Python-free", english)
-        self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", english)
-        self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", english)
+        self.assertLessEqual(len(english.splitlines()), 120)
+        self.assertLessEqual(len(korean.splitlines()), 120)
+        self.assertIn("AgentSkills-compatible Markdown workflow", english)
+        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes", english)
+        self.assertIn("not an autonomous scheduler", english)
+        self.assertIn("## Quickstart", english)
+        self.assertIn("## Skill Directory", english)
+        self.assertIn("## Runtime Weight", english)
+        self.assertIn("## Docs", english)
+        self.assertIn("CI follow-ups, deployment verification, PR checks", english)
+        self.assertIn("without creating a scheduler, daemon, database, or MCP server", english)
+        self.assertIn("docs/install.md", english)
+        self.assertIn("docs/storage-and-privacy.md", english)
+        self.assertIn("docs/validation.md", english)
+        self.assertIn("docs/maintainers/release.md", english)
         self.assertIn("until runtime-smoked", normalized_english)
         self.assertIn("docs/runtime-smoke.md", english)
         self.assertIn("not the repository root", normalized_english)
-        self.assertIn("생성되는 WATCHLIST 파일", korean)
-        self.assertIn("생성되는 `.watchlist/WATCHLIST.md` 파일은 기본적으로 로컬/비공개 데이터입니다", korean)
-        self.assertIn("루트 `WATCHLIST.md`는 명시적으로 공유된 팀 상태에만 사용하세요", korean)
-        self.assertNotIn("공유/프로젝트 상태", korean)
-        self.assertIn("MVP 흐름에 전체 CLI 또는 MCP 서버를 추가하지 마세요", korean)
-        self.assertIn("Python-free", korean)
-        self.assertIn("tools/validate_watchlist.py", korean)
-        self.assertIn("Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임", korean)
+
+        self.assertIn("AgentSkills 호환 Markdown workflow", korean)
+        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes", korean)
+        self.assertIn("자율 알림", korean)
+        self.assertIn("## Quickstart", korean)
+        self.assertIn("## Skill Directory", korean)
+        self.assertIn("## Runtime Weight", korean)
+        self.assertIn("## Docs", korean)
+        self.assertIn("CI 후속 확인, 배포 검증, PR 확인", korean)
+        self.assertIn("scheduler, daemon, database, MCP server", korean)
+        self.assertIn("docs/install.md", korean)
+        self.assertIn("docs/storage-and-privacy.md", korean)
+        self.assertIn("docs/validation.md", korean)
+        self.assertIn("docs/maintainers/release.md", korean)
         self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
         self.assertIn("docs/runtime-smoke.md", korean)
         self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
-    def test_readme_openai_zip_packaging_uses_one_top_level_skill_folder(self):
+        moved_headings = [
+            "## Generated WATCHLIST Files",
+            "## Installation For Claude Code",
+            "## Installation For ChatGPT / OpenAI Skills",
+            "## Validation",
+            "## Example Item",
+            "## Archive Policy",
+            "## Concurrent Edits",
+            "## Usage Prompts",
+            "## Safety And Retention",
+        ]
+        for heading in moved_headings:
+            self.assertNotIn(heading, english)
+            self.assertNotIn(heading, korean)
+
+    def test_storage_doc_owns_generated_file_policy(self):
         english = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
         korean = (REPO_ROOT / "README.ko.md").read_text(encoding="utf-8")
+        storage = (REPO_ROOT / "docs" / "storage-and-privacy.md").read_text(
+            encoding="utf-8"
+        )
 
-        for text in [english, korean]:
+        self.assertIn("docs/storage-and-privacy.md", english)
+        self.assertIn("docs/storage-and-privacy.md", korean)
+        self.assertIn("Generated WATCHLIST Files", storage)
+        self.assertIn("Generated `.watchlist/WATCHLIST.md` files are local/private data by default", storage)
+        self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", storage)
+        self.assertNotIn("shared/project state", storage)
+        self.assertIn("Do not add a full CLI or MCP server for the MVP flow", storage)
+        self.assertIn("The installable skill bundle is intentionally Python-free", storage)
+        self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", storage)
+        self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", storage)
+
+    def test_install_and_release_docs_openai_zip_packaging_uses_one_top_level_skill_folder(self):
+        install = (REPO_ROOT / "docs" / "install.md").read_text(encoding="utf-8")
+        release = (REPO_ROOT / "docs" / "maintainers" / "release.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "Update an existing personal install by removing the target first",
+            install,
+        )
+        self.assertIn("rm -rf ~/.claude/skills/watchlist-md", install)
+        self.assertIn("mkdir -p ~/.claude/skills", install)
+        self.assertIn(
+            "git diff --name-only origin/main...HEAD -- .agents/skills/watchlist-md",
+            release,
+        )
+        self.assertIn("git diff --name-only -- .agents/skills/watchlist-md", release)
+        self.assertNotIn(
+            "git diff HEAD --name-only -- .agents/skills/watchlist-md",
+            release,
+        )
+
+        for text in [install, release]:
             with self.subTest():
                 self.assertIn("zip -r watchlist-md-skill.zip watchlist-md", text)
                 self.assertIn("watchlist-md/SKILL.md", text)
