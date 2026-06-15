@@ -31,11 +31,15 @@ python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format -
 python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 ```
 
-Confirm no unintended runtime bundle change:
+Confirm no unintended runtime bundle change against the PR base and the local working tree:
 
 ```bash
+git fetch origin main
+git diff --name-only origin/main...HEAD -- .agents/skills/watchlist-md
 git diff --name-only -- .agents/skills/watchlist-md
 ```
+
+If the PR targets a branch other than `main`, replace `origin/main` with the actual base ref.
 
 ## OpenAI Skills Zip
 

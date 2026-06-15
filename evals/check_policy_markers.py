@@ -38,6 +38,8 @@ CHECKS = {
         "Installation For Claude Code",
         "Installation For ChatGPT / OpenAI Skills",
         "AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes",
+        "Update an existing personal install by removing the target first",
+        "rm -rf ~/.claude/skills/watchlist-md",
         "zip -r watchlist-md-skill.zip watchlist-md",
         "watchlist-md/SKILL.md",
         "not the repository root",
@@ -68,6 +70,8 @@ CHECKS = {
         "The installable skill bundle is intentionally Python-free",
         "python3 evals/check_skill_package.py",
         "python3 evals/check_release_metadata.py",
+        "git diff --name-only origin/main...HEAD -- .agents/skills/watchlist-md",
+        "git diff --name-only -- .agents/skills/watchlist-md",
         "Repository-only files must stay outside `.agents/skills/watchlist-md/`",
     ],
     ".agents/skills/watchlist-md/SKILL.md": [

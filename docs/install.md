@@ -51,6 +51,14 @@ mkdir -p ~/.claude/skills
 cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
 ```
 
+Update an existing personal install by removing the target first:
+
+```bash
+rm -rf ~/.claude/skills/watchlist-md
+mkdir -p ~/.claude/skills
+cp -R .agents/skills/watchlist-md ~/.claude/skills/watchlist-md
+```
+
 The `agents/openai.yaml` file is Codex UI metadata. It is safe if copied with the directory.
 
 ## Installation For ChatGPT / OpenAI Skills

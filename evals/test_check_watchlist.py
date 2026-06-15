@@ -880,6 +880,22 @@ timezone: Asia/Seoul
             encoding="utf-8"
         )
 
+        self.assertIn(
+            "Update an existing personal install by removing the target first",
+            install,
+        )
+        self.assertIn("rm -rf ~/.claude/skills/watchlist-md", install)
+        self.assertIn("mkdir -p ~/.claude/skills", install)
+        self.assertIn(
+            "git diff --name-only origin/main...HEAD -- .agents/skills/watchlist-md",
+            release,
+        )
+        self.assertIn("git diff --name-only -- .agents/skills/watchlist-md", release)
+        self.assertNotIn(
+            "git diff HEAD --name-only -- .agents/skills/watchlist-md",
+            release,
+        )
+
         for text in [install, release]:
             with self.subTest():
                 self.assertIn("zip -r watchlist-md-skill.zip watchlist-md", text)
