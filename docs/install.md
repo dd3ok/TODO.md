@@ -247,12 +247,49 @@ Build from a committed tree so untracked files cannot leak into the archive:
 ```bash
 (
 set -euo pipefail
-git archive --format=zip --prefix=watchlist-md/ \
+python_check='import sys; raise SystemExit(sys.version_info < (3, 8))'
+if python3 -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python3
+elif python -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python
+else
+  echo "Python 3.8 or newer is required" >&2
+  exit 1
+fi
+archive_ref=$(git rev-parse HEAD)
+archive_mtime=$(git show -s --format=%cI "${archive_ref}")
+archive_check_tree=$(mktemp -d)
+mkdir "${archive_check_tree}/evals"
+trap 'rm -f "${archive_check_tree}/evals/check_skill_package.py" "${archive_check_tree}/evals/runtime_package_files.txt"; rmdir "${archive_check_tree}/evals" "${archive_check_tree}"' EXIT
+git show "${archive_ref}:evals/check_skill_package.py" \
+  >"${archive_check_tree}/evals/check_skill_package.py"
+git show "${archive_ref}:evals/runtime_package_files.txt" \
+  >"${archive_check_tree}/evals/runtime_package_files.txt"
+TZ=UTC git -c core.autocrlf=false -c core.eol=lf archive \
+  --format=zip --prefix=watchlist-md/ --mtime="${archive_mtime}" \
   --output=watchlist-md-skill.zip \
-  HEAD:.agents/skills/watchlist-md
-python3 evals/check_skill_package.py --archive watchlist-md-skill.zip
+  "${archive_ref}:.agents/skills/watchlist-md"
+"${python_cmd}" "${archive_check_tree}/evals/check_skill_package.py" \
+  --archive watchlist-md-skill.zip
+rm -f "${archive_check_tree}/evals/check_skill_package.py" \
+  "${archive_check_tree}/evals/runtime_package_files.txt"
+rmdir "${archive_check_tree}/evals" "${archive_check_tree}"
+trap - EXIT
 )
 ```
+
+This recipe requires Git 2.40 or newer with `git archive --mtime` support. The
+explicit commit time, UTC process time zone, and disabled checkout line-ending
+conversion keep committed file bytes and repeated output stable with the same
+Git/platform toolchain. A subtree expression resolves to a tree object, so
+omitting `--mtime` would stamp entries with the current time; omitting `TZ=UTC`
+would use the host time zone; omitting `core.autocrlf=false` can rewrite line
+endings. Git ZIP metadata and compression can still differ across other Git
+builds, so cross-toolchain byte identity is not promised. Run the fenced recipe
+in Bash (Git Bash on Windows); a native PowerShell translation must set
+`$env:TZ = 'UTC'` for the archive command and restore the previous value afterward.
+The checker and manifest are also read from the pinned commit, so concurrent
+working-tree or `HEAD` changes cannot silently change the validation contract.
 
 The archive contains `watchlist-md/SKILL.md` and `watchlist-md/LICENSE.txt` under
 one top-level folder and remains Python-free. Repository `tools/`, `evals/`,

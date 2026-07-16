@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import contextlib
 import io
+import os
 import subprocess
 import sys
 import tempfile
@@ -1114,6 +1115,17 @@ timezone: Asia/Seoul
         self.assertIn("mktemp -d", install)
         self.assertNotIn("rm -rf", install)
         self.assertIn('mkdir -p "$HOME/.claude/skills"', install)
+        self.assertIn("archive_ref=$(git rev-parse HEAD)", install)
+        self.assertIn("Python 3.8 or newer is required", install)
+        self.assertIn("python_cmd=python3", install)
+        self.assertIn("python_cmd=python", install)
+        self.assertIn('archive_mtime=$(git show -s --format=%cI "${archive_ref}")', install)
+        self.assertIn('--mtime="${archive_mtime}"', install)
+        self.assertIn(
+            "TZ=UTC git -c core.autocrlf=false -c core.eol=lf archive", install
+        )
+        self.assertIn("Git 2.40 or newer", install)
+        self.assertIn("cross-toolchain byte identity is not promised", install)
         self.assertIn("Codex detects newly installed skills automatically", install)
         self.assertIn("$watchlist-md Add this to WATCHLIST.md", install)
         self.assertIn("## Vendor Paths And Guides", install)
@@ -1137,6 +1149,19 @@ timezone: Asia/Seoul
         self.assertIn("git diff --name-only -- .agents/skills/watchlist-md", release)
         self.assertIn('gh run watch "${run_id}"', release)
         self.assertGreaterEqual(release.count("set -euo pipefail"), 3)
+        self.assertEqual(release.count("Python 3.8 or newer is required"), 4)
+        self.assertEqual(
+            release.count('release_mtime=$(git show -s --format=%cI "${release_sha}")'),
+            2,
+        )
+        self.assertEqual(release.count('--mtime="${release_mtime}"'), 2)
+        self.assertEqual(
+            release.count("TZ=UTC git -c core.autocrlf=false -c core.eol=lf archive"),
+            2,
+        )
+        self.assertIn("Git 2.40 or newer", release)
+        self.assertIn("same Git/platform toolchain", release)
+        self.assertIn("not promise identical bytes across every Git build", release)
         self.assertNotIn(
             "git diff HEAD --name-only -- .agents/skills/watchlist-md",
             release,
@@ -1145,10 +1170,11 @@ timezone: Asia/Seoul
         for text in [install, release]:
             with self.subTest():
                 self.assertIn(
-                    "git archive --format=zip --prefix=watchlist-md/",
+                    "--format=zip --prefix=watchlist-md/",
                     text,
                 )
-                self.assertIn("check_skill_package.py --archive", text)
+                self.assertIn("check_skill_package.py", text)
+                self.assertIn("--archive", text)
                 self.assertIn("watchlist-md/SKILL.md", text)
                 self.assertIn("tools/validate_watchlist.py", text)
                 self.assertNotIn("watchlist-md/scripts/validate_watchlist.py", text)
@@ -1171,6 +1197,80 @@ timezone: Asia/Seoul
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Skill package check passed", result.stdout)
+
+    def test_archive_validation_does_not_require_a_source_skill_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = Path(tmpdir) / "package.zip"
+            PACKAGE_CHECK.build_package(archive_path)
+            original_skill_dir = PACKAGE_CHECK.SKILL_DIR
+            PACKAGE_CHECK.SKILL_DIR = Path(tmpdir) / "missing-skill"
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    result = PACKAGE_CHECK.main(
+                        ["check_skill_package.py", "--archive", str(archive_path)]
+                    )
+            finally:
+                PACKAGE_CHECK.SKILL_DIR = original_skill_dir
+
+        self.assertEqual(result, 0)
+
+    def test_fixed_commit_mtime_and_utc_make_same_toolchain_archive_repeatable(self):
+        archive_help = subprocess.run(
+            ["git", "archive", "-h"],
+            cwd=REPO_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        ).stdout
+        if "--mtime" not in archive_help:
+            self.skipTest("git archive --mtime requires Git 2.40 or newer")
+
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+        ).strip()
+        commit_time = subprocess.check_output(
+            ["git", "show", "-s", "--format=%cI", commit],
+            cwd=REPO_ROOT,
+            text=True,
+        ).strip()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archives = [Path(tmpdir) / "first.zip", Path(tmpdir) / "second.zip"]
+            for ambient_timezone, archive in zip(["UTC", "Asia/Seoul"], archives):
+                environment = os.environ.copy()
+                environment["TZ"] = ambient_timezone
+                archive_environment = environment.copy()
+                archive_environment["TZ"] = "UTC"
+                subprocess.run(
+                    [
+                        "git",
+                        "-c",
+                        "core.autocrlf=false",
+                        "-c",
+                        "core.eol=lf",
+                        "archive",
+                        "--format=zip",
+                        "--prefix=watchlist-md/",
+                        f"--mtime={commit_time}",
+                        f"--output={archive}",
+                        f"{commit}:.agents/skills/watchlist-md",
+                    ],
+                    cwd=REPO_ROOT,
+                    check=True,
+                    env=archive_environment,
+                )
+
+            self.assertEqual(archives[0].read_bytes(), archives[1].read_bytes())
+            self.assertEqual(PACKAGE_CHECK.validate_package(archives[0]), [])
+            with zipfile.ZipFile(archives[0]) as archive:
+                for packaged_path in PACKAGE_CHECK.REQUIRED_FILES:
+                    repository_path = ".agents/skills/" + packaged_path
+                    committed_bytes = subprocess.check_output(
+                        ["git", "show", f"{commit}:{repository_path}"],
+                        cwd=REPO_ROOT,
+                    )
+                    self.assertEqual(archive.read(packaged_path), committed_bytes)
 
     def test_documented_runtime_package_lists_match_manifest(self):
         expected_release = set(PACKAGE_CHECK.REQUIRED_FILES)

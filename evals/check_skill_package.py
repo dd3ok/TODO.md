@@ -133,7 +133,7 @@ def main(argv: list[str]) -> int:
             "Skill package manifest check failed:\n"
             + "\n".join(f"- {error}" for error in manifest_errors)
         )
-    if not SKILL_DIR.is_dir():
+    if args.archive is None and not SKILL_DIR.is_dir():
         return fail(f"Missing skill directory: {SKILL_DIR}")
 
     if args.archive is not None:
