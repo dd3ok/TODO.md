@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Pinned standalone ZIP entry times, process time zone, and line-ending settings
+  so the same Git/platform toolchain produces committed bytes and a stable
+  SHA-256 across invocation times and host configurations, with toolchain limits
+  documented.
+
 ## [0.4.2] - 2026-07-17
 
 ### Added

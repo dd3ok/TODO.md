@@ -31,13 +31,25 @@ transcripts, screenshots, and raw logs.
 Run:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_policy_markers.py
-python3 evals/check_semantic_cases.py
-python3 evals/check_skill_package.py
-python3 evals/check_release_metadata.py
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+(
+set -euo pipefail
+python_check='import sys; raise SystemExit(sys.version_info < (3, 8))'
+if python3 -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python3
+elif python -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python
+else
+  echo "Python 3.8 or newer is required" >&2
+  exit 1
+fi
+PYTHONDONTWRITEBYTECODE=1 "${python_cmd}" -m unittest discover -s evals -p 'test_*.py'
+"${python_cmd}" evals/check_policy_markers.py
+"${python_cmd}" evals/check_semantic_cases.py
+"${python_cmd}" evals/check_skill_package.py
+"${python_cmd}" evals/check_release_metadata.py
+"${python_cmd}" evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
+"${python_cmd}" tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
+)
 ```
 
 Confirm no unintended runtime bundle change against the PR base and local tree:
@@ -67,7 +79,16 @@ Run the release-ready metadata check:
 ```bash
 (
 set -euo pipefail
-python3 evals/check_release_metadata.py --release
+python_check='import sys; raise SystemExit(sys.version_info < (3, 8))'
+if python3 -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python3
+elif python -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python
+else
+  echo "Python 3.8 or newer is required" >&2
+  exit 1
+fi
+"${python_cmd}" evals/check_release_metadata.py --release
 version=$(cat VERSION)
 git fetch origin --tags
 if git show-ref --verify --quiet "refs/tags/v${version}"; then
@@ -113,34 +134,60 @@ Build from the exact merged commit, not from an untracked working directory:
 ```bash
 (
 set -euo pipefail
+python_check='import sys; raise SystemExit(sys.version_info < (3, 8))'
+if python3 -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python3
+elif python -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python
+else
+  echo "Python 3.8 or newer is required" >&2
+  exit 1
+fi
 git fetch origin main --tags
 release_sha=$(git rev-parse origin/main)
 test "$(git rev-parse HEAD)" = "${release_sha}"
 test -z "$(git status --porcelain)"
 version=$(git show "${release_sha}:VERSION")
+release_mtime=$(git show -s --format=%cI "${release_sha}")
 release_tree=$(mktemp -d)
 mkdir "${release_tree}/evals"
-trap 'rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" "${release_tree}/evals/check_release_metadata.py"; rmdir "${release_tree}/evals" "${release_tree}"' EXIT
+trap 'rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" "${release_tree}/evals/check_release_metadata.py" "${release_tree}/evals/check_skill_package.py" "${release_tree}/evals/runtime_package_files.txt"; rmdir "${release_tree}/evals" "${release_tree}"' EXIT
 git show "${release_sha}:VERSION" >"${release_tree}/VERSION"
 git show "${release_sha}:CHANGELOG.md" >"${release_tree}/CHANGELOG.md"
 git show "${release_sha}:evals/check_release_metadata.py" \
   >"${release_tree}/evals/check_release_metadata.py"
-python3 "${release_tree}/evals/check_release_metadata.py" "${release_tree}" --release
-rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" \
-  "${release_tree}/evals/check_release_metadata.py"
-rmdir "${release_tree}/evals" "${release_tree}"
-trap - EXIT
+git show "${release_sha}:evals/check_skill_package.py" \
+  >"${release_tree}/evals/check_skill_package.py"
+git show "${release_sha}:evals/runtime_package_files.txt" \
+  >"${release_tree}/evals/runtime_package_files.txt"
+"${python_cmd}" "${release_tree}/evals/check_release_metadata.py" "${release_tree}" --release
 mkdir -p dist
 artifact="dist/watchlist-md-skill-v${version}.zip"
-git archive --format=zip --prefix=watchlist-md/ --output="${artifact}" "${release_sha}:.agents/skills/watchlist-md"
-python3 evals/check_skill_package.py --archive "${artifact}"
+TZ=UTC git -c core.autocrlf=false -c core.eol=lf archive \
+  --format=zip --prefix=watchlist-md/ --mtime="${release_mtime}" \
+  --output="${artifact}" "${release_sha}:.agents/skills/watchlist-md"
+"${python_cmd}" "${release_tree}/evals/check_skill_package.py" --archive "${artifact}"
 sha256sum "${artifact}"
+rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" \
+  "${release_tree}/evals/check_release_metadata.py" \
+  "${release_tree}/evals/check_skill_package.py" \
+  "${release_tree}/evals/runtime_package_files.txt"
+rmdir "${release_tree}/evals" "${release_tree}"
+trap - EXIT
 )
 ```
 
 The archive must contain one top-level `watchlist-md/` directory and the exact
-seven runtime files. On PowerShell, use `Get-FileHash -Algorithm SHA256` instead
-of `sha256sum`.
+seven runtime files. This recipe requires Git 2.40 or newer with `git archive
+--mtime` support. Pinning the entry time to the source commit and Git's process
+time zone to UTC, and checkout line-ending conversion off makes committed file
+bytes and repeated builds stable with the same Git/platform toolchain. It does
+not promise identical bytes across every Git build or compression implementation.
+Record the release OS, `git --version`, and SHA-256 with the release evidence.
+Run the fenced recipe in Bash (Git Bash on Windows); a native PowerShell
+translation must set `$env:TZ = 'UTC'` for the archive command, restore the
+previous value afterward, and use `Get-FileHash -Algorithm SHA256` instead of
+`sha256sum`.
 
 ## Publish And Verify
 
@@ -149,17 +196,39 @@ Only publish after required `main` CI checks succeed for `release_sha`:
 ```bash
 (
 set -euo pipefail
+python_check='import sys; raise SystemExit(sys.version_info < (3, 8))'
+if python3 -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python3
+elif python -c "${python_check}" >/dev/null 2>&1; then
+  python_cmd=python
+else
+  echo "Python 3.8 or newer is required" >&2
+  exit 1
+fi
 git fetch origin main --tags
 release_sha=$(git rev-parse origin/main)
 version=$(git show "${release_sha}:VERSION")
+release_mtime=$(git show -s --format=%cI "${release_sha}")
 artifact="dist/watchlist-md-skill-v${version}.zip"
 test "$(git rev-parse HEAD)" = "${release_sha}"
 test -z "$(git status --porcelain)"
-python3 evals/check_release_metadata.py --release
+release_tree=$(mktemp -d)
+mkdir "${release_tree}/evals"
+trap 'rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" "${release_tree}/evals/check_release_metadata.py" "${release_tree}/evals/check_skill_package.py" "${release_tree}/evals/runtime_package_files.txt"; rmdir "${release_tree}/evals" "${release_tree}"' EXIT
+git show "${release_sha}:VERSION" >"${release_tree}/VERSION"
+git show "${release_sha}:CHANGELOG.md" >"${release_tree}/CHANGELOG.md"
+git show "${release_sha}:evals/check_release_metadata.py" \
+  >"${release_tree}/evals/check_release_metadata.py"
+git show "${release_sha}:evals/check_skill_package.py" \
+  >"${release_tree}/evals/check_skill_package.py"
+git show "${release_sha}:evals/runtime_package_files.txt" \
+  >"${release_tree}/evals/runtime_package_files.txt"
+"${python_cmd}" "${release_tree}/evals/check_release_metadata.py" "${release_tree}" --release
 mkdir -p dist
-git archive --format=zip --prefix=watchlist-md/ \
+TZ=UTC git -c core.autocrlf=false -c core.eol=lf archive \
+  --format=zip --prefix=watchlist-md/ --mtime="${release_mtime}" \
   --output="${artifact}" "${release_sha}:.agents/skills/watchlist-md"
-python3 evals/check_skill_package.py --archive "${artifact}"
+"${python_cmd}" "${release_tree}/evals/check_skill_package.py" --archive "${artifact}"
 sha256sum "${artifact}"
 run_id=$(gh run list --repo dd3ok/WATCHLIST.md --workflow CI --event push \
   --commit "${release_sha}" --limit 1 --json databaseId \
@@ -178,9 +247,15 @@ git fetch origin --tags
 test "$(git rev-list -n 1 "v${version}")" = "${release_sha}"
 gh release view "v${version}" --repo dd3ok/WATCHLIST.md \
   --json tagName,publishedAt,targetCommitish,assets,url
+rm -f "${release_tree}/VERSION" "${release_tree}/CHANGELOG.md" \
+  "${release_tree}/evals/check_release_metadata.py" \
+  "${release_tree}/evals/check_skill_package.py" \
+  "${release_tree}/evals/runtime_package_files.txt"
+rmdir "${release_tree}/evals" "${release_tree}"
+trap - EXIT
 )
 ```
 
-Verify the uploaded asset name, SHA-256 digest, tag target, and release URL. If
-any check fails, stop and report it; do not move or recreate a published tag
-silently.
+Verify the uploaded asset name, SHA-256 digest, tag target, release URL, release
+OS, and Git version. If any check fails, stop and report it; do not move or
+recreate a published tag silently.
