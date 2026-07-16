@@ -1,12 +1,12 @@
 # WATCHLIST.md
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Maintainer checks: Python 3.8+](https://img.shields.io/badge/maintainer_checks-Python_3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/dd3ok/WATCHLIST.md)](https://github.com/dd3ok/WATCHLIST.md/blob/main/LICENSE)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dd3ok/WATCHLIST.md/ci.yml?branch=main)](https://github.com/dd3ok/WATCHLIST.md/actions/workflows/ci.yml)
 
 [English README](README.md)
 
-`WATCHLIST.md`는 deferred check를 기록하기 위한 경량 **AI Agent Skill**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes에서 CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일을 scheduler, daemon, database, MCP server 없이 추적하도록 설계됐습니다. 문서상 format/path 호환성과 실제 runtime 검증은 구분하며, runtime smoke matrix의 pending 상태를 기준으로 봅니다.
+`WATCHLIST.md`는 deferred check를 기록하기 위한 경량 **AI Agent Skill**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, Google Antigravity의 directory 기반 Agent Skills surface, Kilo, OpenClaw, Hermes, 그리고 Gemini Code Assist Standard/Enterprise 또는 유료 Gemini/Enterprise Agent Platform API key를 쓰는 Gemini CLI를 대상으로 합니다. CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일을 scheduler, daemon, database, MCP server 없이 추적합니다. 문서상 format/path 호환성과 실제 runtime 검증은 구분하며, runtime smoke matrix의 pending 상태를 기준으로 봅니다.
 
 이 스킬은 자율 스케줄러, 자율 알림, daemon, database, cron job, UI, background worker가 아닙니다. 나중에 확인할 일을 기록할 뿐이며, 스스로 깨어나거나 polling, 알림, 확인 실행을 하지 않습니다.
 
@@ -76,9 +76,9 @@ Markdown 편집으로 add, review, complete, blocked, snoozed, dropped, explicit
 
 ## Docs
 
-- [Installation](docs/install.md): vendor discovery path, Codex·Claude Code setup, standalone zip packaging.
+- [Installation](docs/install.md): 최신 vendor 지원 범위와 discovery path, Codex·Claude Code setup, standalone zip packaging.
 - [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, retention.
 - [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, item format expectations.
 - [Runtime smoke](docs/runtime-smoke.md): transcript나 raw log 없는 compact vendor/runtime smoke matrix.
-- [Maintainer release checklist](docs/maintainers/release.md): package boundary, release metadata, pre-PR checks.
-- [Maintainer self-checks](docs/maintainers/self-checks.md): maintainer용 repo-only review prompts.
+- [Maintainer release checklist](docs/maintainers/release.md): package boundary와 pre-PR, publish, post-release checks.
+- [Maintainer self-checks](docs/maintainers/self-checks.md): canonical eval 관리 절차와 수동 runtime 점검 경계.

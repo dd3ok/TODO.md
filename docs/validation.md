@@ -59,6 +59,9 @@ The validator requires every field key. Default mode reports field-order drift a
 a warning; `--strict-format` promotes it to an error. For an open item, only
 `last_checked_at` and `result` are normally left blank.
 
+The legacy WATCHLIST top-level field `mode` is accepted only for compatibility and
+emits `DEPRECATED_MODE_FIELD`; it has no behavior and should be removed.
+
 Required values for open items are `status`, `priority`, `owner`, `due_at`, `created_at`, `source`, `trigger`, `action`, and `done_when`. Recommended when known: `next_step_on_fail`. Normally blank until checked: `last_checked_at` and `result`.
 
 `owner` means who should act during the next explicit WATCHLIST review. It does not mean the assistant will wake up automatically.

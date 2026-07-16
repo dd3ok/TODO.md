@@ -1,25 +1,55 @@
 # Runtime Smoke Matrix
 
-This file tracks manual smoke checks in real agent runtimes. Record only real runtime results; do not mark a row as pass based on README guidance or CI alone. Do not store transcripts, screenshots, raw logs, or long runtime output.
+This file tracks manual checks in real agent runtimes. Record only real runtime
+results. CI, documentation review, installation, or a plausible natural-language
+answer is not a runtime pass. Do not store transcripts, screenshots, raw logs, or
+long runtime output.
+
+## Evidence Codes
+
+- `D` — discovery: the runtime lists `watchlist-md` from the intended path.
+- `E` — explicit invocation: the runtime confirms the named skill was activated.
+- `B` — behavior: a temporary WATCHLIST fixture is changed or reviewed correctly.
+- `R` — routing: one positive implicit trigger and one negative reminder/lifecycle
+  prompt route correctly.
+
+Use `pass`, `fail`, `blocked`, or `pending` for each code. `overall: pass` requires
+all four codes to pass with the same runtime, model/mode, OS, relevant skill
+configuration, and source commit.
 
 ## Matrix
 
-| Runtime | Install method | Prompt | Expected | Status | Date | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Codex | `$skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents/skills/watchlist-md` | `Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.` | Creates or updates the selected WATCHLIST target and reports `scheduler: none`. | pending | - | - |
-| Claude Code | Copy `watchlist-md` to `.claude/skills/watchlist-md` or `~/.claude/skills/watchlist-md` | `Review WATCHLIST.md.` | Lists items without mutation unless a check is explicitly performed. | pending | - | - |
-| Gemini CLI | Use `.agents/skills/watchlist-md` or `gemini skills link <skill-dir>` | `Add this to watchlist. Check the data sync result tomorrow.` | Records a deferred check without promising a wakeup. | pending | - | - |
-| Kilo | Use `.agents/skills/watchlist-md` or `.kilo/skills/watchlist-md` | `Show WATCHLIST.md items due today.` | Reviews due items without mutating list-only output. | pending | - | - |
-| OpenClaw | Use `<workspace>/.agents/skills/watchlist-md` or `~/.agents/skills/watchlist-md` | `Add a local/private watchlist item for test logs today at 18:00.` | Uses `.watchlist/WATCHLIST.md` when no shared-team intent exists. | pending | - | - |
-| Hermes | Copy to `~/.hermes/skills/watchlist-md` or use `hermes skills install` | `Mark WL-20260507-001 done after confirming CI passed.` | Updates lifecycle fields without deleting the item. | pending | - | - |
+| Runtime | Eligibility / install scope | D/E/B/R | Runtime/model/mode/OS/config | Source SHA | Overall | Date | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Codex | Project `.agents/skills/watchlist-md` or supported installer | pending/pending/pending/pending | - | - | pending | - | - |
+| Claude Code | Project or personal `.claude/skills/watchlist-md` | pending/pending/pending/pending | - | - | pending | - | - |
+| Google Antigravity Agent Skills | Directory layout documented; Antigravity CLI flat-file layout excluded | pending/pending/pending/pending | - | - | pending | - | - |
+| Gemini CLI | Code Assist Standard/Enterprise or paid Gemini/Enterprise Agent Platform API key; trusted workspace | pending/pending/pending/pending | - | - | pending | - | - |
+| Kilo | Project `.agents/skills/watchlist-md` or `.kilo/skills/watchlist-md` | pending/pending/pending/pending | - | - | pending | - | - |
+| OpenClaw | Configured workspace/project-agent or personal path | pending/pending/pending/pending | - | - | pending | - | - |
+| Hermes | User `~/.hermes/skills/watchlist-md` or supported installer | pending/pending/pending/pending | - | - | pending | - | - |
 
-## Pass Criteria
+## Procedure
 
-- The runtime discovers the skill from the installed `watchlist-md/SKILL.md`.
-- The response follows the trigger boundary and does not promise autonomous
-  reminders or wakeups.
-- Generated `.watchlist/WATCHLIST.md` data stays local/private unless explicitly
-  shared.
-- The installed skill works without a bundled Python validator.
-- Source-repository maintainer validation can be run separately with
-  `python tools/validate_watchlist.py` or `python evals/check_watchlist.py`.
+1. Install or check out the exact 40-character source commit SHA (not a moving
+   branch), verify the installed tree came from it, and record runtime version,
+   model/mode, OS, and relevant skill-policy configuration.
+2. Verify discovery with the runtime's skill-list command or UI (`D`).
+3. Explicitly invoke `watchlist-md`; record the runtime's activation signal (`E`).
+   Gemini CLI requires trusted-workspace setup and user activation consent.
+4. For `B`, run canonical add case `no-existing-watchlist-default-local-private`
+   in a disposable workspace and verify the write, target, fields, fresh ID, and
+   `scheduler: none`; resolve time against the recorded runtime time. Then run
+   `list-review-no-mutate-kr` and verify its no-mutation contract.
+5. For `R`, run `trigger-watchlist-review-en` and
+   `no-trigger-generic-reminder-en` in separate fresh sessions where the skill is
+   discoverable but not activated. Record activation for the positive case and
+   absence of activation for the negative case.
+6. Record only a compact result and a safe public issue/PR pointer when useful.
+
+The installed skill must work without a bundled Python validator. Source-repo
+maintainer checks may be run separately with `python tools/validate_watchlist.py`
+or `python evals/check_watchlist.py`; they never substitute for `D/E/B/R` evidence.
+
+If activation cannot be proven, keep `E` and `overall` as `pending` or `blocked`
+even when the response happens to look correct.

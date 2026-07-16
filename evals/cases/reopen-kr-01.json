@@ -1,0 +1,21 @@
+{
+  "id": "reopen-kr-01",
+  "prompt": "WL-20260401-001 다시 확인해야 해. open으로 재개해.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "with-archivable-items.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "reopen_item",
+    "item_id": "WL-20260401-001",
+    "status": "open",
+    "required_updates": [
+      "result"
+    ],
+    "default_section": "## Open",
+    "must_not": [
+      "delete_item",
+      "leave_under_done"
+    ]
+  }
+}

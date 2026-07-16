@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import sys
 import tempfile
 import zipfile
@@ -11,16 +12,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL_DIR = ROOT / ".agents" / "skills" / "watchlist-md"
 PACKAGE_ROOT = "watchlist-md"
+PACKAGE_MANIFEST = ROOT / "evals" / "runtime_package_files.txt"
 
-REQUIRED_FILES = {
-    "watchlist-md/SKILL.md",
-    "watchlist-md/LICENSE.txt",
-    "watchlist-md/agents/openai.yaml",
-    "watchlist-md/assets/WATCHLIST.template.md",
-    "watchlist-md/references/format.md",
-    "watchlist-md/references/lifecycle.md",
-    "watchlist-md/references/safety.md",
-}
+MANIFEST_ENTRIES = [
+    line.strip()
+    for line in PACKAGE_MANIFEST.read_text(encoding="utf-8").splitlines()
+    if line.strip()
+]
+REQUIRED_FILES = frozenset(MANIFEST_ENTRIES)
 FORBIDDEN_PARTS = {"__pycache__", ".pytest_cache", "scripts"}
 FORBIDDEN_SUFFIXES = {".py", ".pyw", ".pyc", ".pyo"}
 REPOSITORY_ONLY_PARTS = {
@@ -39,8 +38,39 @@ def fail(message: str) -> int:
     return 1
 
 
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build or validate the exact standalone watchlist-md skill archive."
+    )
+    parser.add_argument(
+        "--archive",
+        type=Path,
+        help="Validate an existing release archive instead of building a temporary one.",
+    )
+    return parser.parse_args(argv[1:])
+
+
 def archive_name(path: Path) -> str:
     return f"{PACKAGE_ROOT}/{path.relative_to(SKILL_DIR).as_posix()}"
+
+
+def validate_manifest() -> list[str]:
+    errors: list[str] = []
+    duplicates = sorted(
+        name for name, count in Counter(MANIFEST_ENTRIES).items() if count > 1
+    )
+    if duplicates:
+        errors.append("duplicate package manifest entry(s): " + ", ".join(duplicates))
+    if not REQUIRED_FILES:
+        errors.append("package manifest must contain at least one file")
+    invalid = sorted(
+        name
+        for name in REQUIRED_FILES
+        if not name.startswith(f"{PACKAGE_ROOT}/") or "\\" in name or name.endswith("/")
+    )
+    if invalid:
+        errors.append("invalid package manifest entry(s): " + ", ".join(invalid))
+    return errors
 
 
 def build_package(zip_path: Path) -> None:
@@ -52,8 +82,11 @@ def build_package(zip_path: Path) -> None:
 
 def validate_package(zip_path: Path) -> list[str]:
     errors: list[str] = []
-    with zipfile.ZipFile(zip_path) as archive:
-        archive_names = archive.namelist()
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            archive_names = archive.namelist()
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        return [f"invalid or unreadable zip archive: {exc}"]
     names = set(archive_names)
     file_entries = [name for name in archive_names if not name.endswith("/")]
     file_names = set(file_entries)
@@ -92,21 +125,37 @@ def validate_package(zip_path: Path) -> list[str]:
     return errors
 
 
-def main() -> int:
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    manifest_errors = validate_manifest()
+    if manifest_errors:
+        return fail(
+            "Skill package manifest check failed:\n"
+            + "\n".join(f"- {error}" for error in manifest_errors)
+        )
     if not SKILL_DIR.is_dir():
         return fail(f"Missing skill directory: {SKILL_DIR}")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        zip_path = Path(tmpdir) / "watchlist-md-skill.zip"
-        build_package(zip_path)
+    if args.archive is not None:
+        zip_path = args.archive
+        if not zip_path.is_file():
+            return fail(f"Skill archive not found: {zip_path}")
         errors = validate_package(zip_path)
+    else:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "watchlist-md-skill.zip"
+            build_package(zip_path)
+            errors = validate_package(zip_path)
 
     if errors:
         return fail("Skill package check failed:\n" + "\n".join(f"- {error}" for error in errors))
 
-    print(f"Skill package check passed: {len(REQUIRED_FILES)} required file(s)")
+    source = f" archive={zip_path}" if args.archive is not None else ""
+    print(
+        f"Skill package check passed: {len(REQUIRED_FILES)} required file(s){source}"
+    )
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv))

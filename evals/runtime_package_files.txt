@@ -1,0 +1,7 @@
+watchlist-md/SKILL.md
+watchlist-md/LICENSE.txt
+watchlist-md/agents/openai.yaml
+watchlist-md/assets/WATCHLIST.template.md
+watchlist-md/references/format.md
+watchlist-md/references/lifecycle.md
+watchlist-md/references/safety.md

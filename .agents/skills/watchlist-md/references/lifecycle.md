@@ -59,6 +59,11 @@ Optional top-level fields may express the repository's preferred archive behavio
 List-only reviews must not mutate the file. Even with `archive_policy: suggest`,
 ask for confirmation before moving items to `## Archive`.
 
+Determine candidate age from `last_checked_at` when populated, otherwise from
+`created_at`. An item is old enough when the resolved current time minus that
+timestamp is at least `archive_after_days` days. If neither value is a valid
+timestamp, do not suggest that item automatically.
+
 ## Deletion And Retention Policy
 
 Preserve WATCHLIST.md history by default:
@@ -74,16 +79,22 @@ Hard-delete or redact only when:
 - The item contains secrets, credentials, tokens, cookies, private keys, sensitive
   personal data, raw private excerpts, signed URLs, or tokenized URLs.
 
-For sensitive-data incidents, remove or redact the unsafe value immediately and
-keep only a safe pointer if a follow-up record is still useful. If sensitive data
-was committed to Git history, tell the user to rotate affected secrets and handle
-Git history cleanup separately; do not rewrite history unless explicitly asked.
+An explicit request to remove one named `WL-YYYYMMDD-NNN` record is sufficient
+authorization; do not add a redundant confirmation. Re-confirm broad requests,
+whole-file deletion, or deletion whose scope is unclear.
+
+For sensitive-data incidents, remove or redact the unsafe value immediately only
+when the request or an applicable trusted policy authorizes an edit. During a
+list-only review, do not echo or mutate the value; identify its location and type
+safely, request redaction authority, and recommend rotation when applicable. If
+committed to Git history, handle history cleanup separately and only on request.
 
 ## ID And Time Rules
 
 - Generate IDs from the WATCHLIST timezone: WATCHLIST.md `timezone:` field >
   explicit user timezone > environment/user timezone > Asia/Seoul.
 - Use the next `NNN` for that date by reading existing item IDs.
+- Use sequences `001` through `999`; if all are occupied, stop and report exhaustion.
 - Immediately before writing, re-read WATCHLIST.md and scan all existing IDs. If
   the chosen ID already exists, increment `NNN` until an unused ID is found.
 - Never overwrite an existing item.
@@ -120,5 +131,5 @@ If a check was performed but the condition is not complete:
 - Use `status: blocked` when progress depends on another person/system or a
   failure requires action.
 - Use `status: snoozed` when the next check time is known.
-- Update `last_checked_at`, `result`, `next_step_on_fail`, and `due_at` if another
-  review time is chosen.
+- Always update `last_checked_at` and `result`. Update `next_step_on_fail` for a
+  blocker/failure and `due_at` only when another review time is chosen.

@@ -10,6 +10,7 @@
     "item_id": "WL-20260507-001",
     "explicit_record_removal": true,
     "deletes_item": true,
+    "requires_second_confirmation": false,
     "must_not": [
       "rewrite_unrelated_items"
     ]

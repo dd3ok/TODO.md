@@ -1,12 +1,12 @@
 # WATCHLIST.md
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Maintainer checks: Python 3.8+](https://img.shields.io/badge/maintainer_checks-Python_3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/dd3ok/WATCHLIST.md)](https://github.com/dd3ok/WATCHLIST.md/blob/main/LICENSE)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dd3ok/WATCHLIST.md/ci.yml?branch=main)](https://github.com/dd3ok/WATCHLIST.md/actions/workflows/ci.yml)
 
 [Korean README](README.ko.md)
 
-`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks. It is designed for Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes to track CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, and emails without creating a scheduler, daemon, database, or MCP server. Documented format and path compatibility is separate from real runtime verification; see the pending rows in the runtime smoke matrix.
+`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks. It is designed for Codex, Claude Code, Google Antigravity directory-based Agent Skills surfaces, Kilo, OpenClaw, Hermes, and Gemini CLI with Gemini Code Assist Standard/Enterprise or paid Gemini/Enterprise Agent Platform API keys. It tracks CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, and emails without creating a scheduler, daemon, database, or MCP server. Documented format and path compatibility is separate from real runtime verification; see the pending rows in the runtime smoke matrix.
 
 It is not an autonomous scheduler, reminder service, daemon, database, cron job, UI, or background worker. It records what should be checked later; it does not wake up, poll, notify, or run checks by itself.
 
@@ -76,9 +76,9 @@ Use each vendor's documented discovery path or install flow. Format/path compati
 
 ## Docs
 
-- [Installation](docs/install.md): vendor discovery paths, Codex and Claude Code setup, and standalone zip packaging.
+- [Installation](docs/install.md): current vendor eligibility and discovery paths, Codex and Claude Code setup, and standalone zip packaging.
 - [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, and retention.
 - [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, and item format expectations.
 - [Runtime smoke](docs/runtime-smoke.md): compact vendor/runtime smoke matrix without transcripts or raw logs.
-- [Maintainer release checklist](docs/maintainers/release.md): package boundary, release metadata, and pre-PR checks.
-- [Maintainer self-checks](docs/maintainers/self-checks.md): repo-only review prompts for maintainers.
+- [Maintainer release checklist](docs/maintainers/release.md): package boundary, pre-PR, publish, and post-release checks.
+- [Maintainer self-checks](docs/maintainers/self-checks.md): canonical eval workflow and manual runtime boundary.

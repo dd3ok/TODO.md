@@ -10,11 +10,13 @@ When changing WATCHLIST behavior or runtime packaging, update the applicable sou
 - `README.md`
 - `README.ko.md`
 - `.agents/skills/watchlist-md/assets/WATCHLIST.template.md` if the file format changes
-- `.agents/skills/watchlist-md/references/format.md` or `lifecycle.md` when its contract changes
+- `.agents/skills/watchlist-md/references/format.md`, `lifecycle.md`, or `safety.md` when its contract changes
+- `docs/storage-and-privacy.md` and `SECURITY.md` when storage, retention, or redaction behavior changes
 - `examples/WATCHLIST.example.md`, which must mirror the canonical runtime template
 - `evals/prompts.csv`
 - `evals/self_checks.yaml`
 - `evals/cases/*.json` and `evals/trigger_cases.json`
+- `evals/runtime_package_files.txt` if runtime bundle contents change
 - `evals/test_check_watchlist.py`
 - `CHANGELOG.md`
 
@@ -31,5 +33,8 @@ python3 evals/check_policy_markers.py
 python3 evals/check_semantic_cases.py
 python3 evals/check_skill_package.py
 ```
+
+For a release commit, also run `python3 evals/check_release_metadata.py --release`
+after moving all shipped notes out of `Unreleased`.
 
 Do not add secrets, signed URLs, tokenized URLs, raw logs, raw emails, or private dashboard excerpts to examples, tests, or watchlist entries.

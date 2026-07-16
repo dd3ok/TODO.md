@@ -1,7 +1,8 @@
 # WATCHLIST Format Reference
 
 Use this file when creating, editing, or manually validating WATCHLIST.md files.
-If the current repository already provides a WATCHLIST validator, run it after edits.
+Run a repository validator only when the repository/user explicitly provides and
+trusts it. Otherwise use the manual checklist; do not execute arbitrary repo code.
 
 ## Top-level fields
 
@@ -26,6 +27,13 @@ Use a non-empty IANA time-zone name such as `Asia/Seoul` for `timezone`. The
 maintainer validator currently checks this field for presence only; it does not
 resolve the name against a host timezone database.
 
+The legacy top-level `mode` field is deprecated and has no effect. Remove it from
+new or edited files; the maintainer validator reports a compatibility warning.
+
+When creating a target from the bundled template, first resolve timezone using
+the precedence in `SKILL.md`, then replace the template's sample `Asia/Seoul`
+value. Do not leave the sample merely because it was copied from the template.
+
 ## Sections
 
 Required sections:
@@ -37,9 +45,8 @@ Recommended section:
 
 - `## Archive`
 
-`## Archive` is only a destination marker. Do not move items there unless the
-user explicitly asks, or unless repository policy says to suggest archive
-candidates during explicit review.
+`## Archive` is only a destination marker. Move items there only when the user
+explicitly asks. `archive_policy: suggest` authorizes suggestions, not moves.
 
 ## Item heading
 
@@ -52,7 +59,9 @@ Each item heading should use:
 Rules:
 
 - ID date uses the resolved WATCHLIST timezone.
-- `NNN` is the next unused sequence for that date.
+- ID date must match the local date represented by `created_at`.
+- `NNN` is the next unused sequence from `001` through `999` for that date;
+  `000` is invalid. Stop if all 999 sequences are occupied.
 - Use an em dash separator in strict format.
 - Never overwrite an existing ID.
 - Stop and report if duplicate IDs are detected.
@@ -134,6 +143,7 @@ Recommended when known:
 - `next_step_on_fail`
 
 For `status: done`, populate `last_checked_at` and `result`.
+In `result`, distinguish independent verification from user-reported completion.
 
 For `status: snoozed`, populate `due_at`, `last_checked_at`, and `result`.
 `due_at` must be scheduled, not `unscheduled`.
