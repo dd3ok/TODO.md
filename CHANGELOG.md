@@ -2,57 +2,43 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-17
+
 ### Added
 
-- Added regression coverage for validator false negatives, trigger-boundary
-  pairs, exact package contents, and template/example drift.
-- Added the MIT notice to the standalone runtime bundle.
-- Added English and Korean semantic coverage for default local/private
-  watchlist creation when no WATCHLIST file exists.
-- Added a broad staging self-check to keep private `.watchlist/WATCHLIST.md` data
-  out of `git add .` and `git add -A` workflows.
-- Added optional semantic-case category metadata and `expected.must_not`
-  validation for false-trigger cases.
-- Added wrapper help coverage for bundled validator options.
-- Added package-shape smoke coverage and a runtime smoke matrix for manual
-  vendor runtime checks.
-- Clarified README introductions and audience guidance for agent-skill discovery.
+- Added deterministic regression coverage for malformed IDs/headings, fenced
+  pseudo-structure, duplicate sections, BOM/invalid UTF-8 input, release metadata,
+  package contents, and template/example drift.
+- Added lifecycle contracts for snooze, block, reopen, narrow deletion, archive
+  age precedence, and read-only handling of sensitive data.
+- Added a vendor runtime smoke matrix that separates discovery, invocation,
+  behavior, and routing evidence.
+- Added the MIT notice to the exact seven-file standalone runtime bundle.
 
 ### Changed
 
-- Aligned runtime metadata, lifecycle/enum guidance, vendor installation paths,
-  and compatibility claims with their documented contracts and smoke status.
-- Clarified that semantic-case checks lint declared fixtures and contracts; they
-  do not execute an LLM, agent, or runtime.
-- Made the installable skill bundle py-free and slimmer by moving the WATCHLIST
-  validator and self-check prompts to source-repository maintainer tooling,
-  trimming `SKILL.md`, tightening package guards, and preserving CI validation.
+- Clarified storage selection so a bare `WATCHLIST.md` mention does not create
+  shared state without team intent, while qualified paths remain authoritative.
+- Clarified list-only redaction authority, named-item deletion, template timezone
+  replacement, archive age calculation, and user-reported completion evidence.
+- Aligned Codex, Claude Code, Google Antigravity, supported Gemini CLI, Kilo,
+  OpenClaw, and Hermes installation guidance with official vendor documentation.
+- Made the runtime bundle Python-free and moved deterministic validators and
+  canonical self-check maintenance to repository tooling.
+- Made release archives reproducible from a verified commit and added strict
+  release-readiness metadata and archive-shape checks.
 
 ### Fixed
 
-- Rejected invalid skeleton values, misplaced top-level fields, empty open-item
-  semantics, and overflowing timezone-offset minutes in the maintainer validator.
-- Scoped positive trigger cases to explicit WATCHLIST context and preserved the
-  original generic prompts as negative routing cases.
-- Replaced the clean-clone-invalid contributor validation command and enforced
-  the documented exact runtime package allowlist.
-- Allowed explicit WATCHLIST negation as a declared no-trigger intent and made
-  the dependency-free YAML subset validator track parent container types.
-
-## [0.4.2] - 2026-06-10
-
-### Changed
-
-- Clarified generated WATCHLIST file ownership and storage conventions for
-  private `.watchlist/WATCHLIST.md` data versus explicit shared root
-  `WATCHLIST.md` files.
-- Slimmed the runtime `SKILL.md` body while keeping trigger, storage, safety, and
-  validation guardrails in the hot path.
-- Simplified repository-level validation by delegating `evals/check_watchlist.py`
-  to the bundled skill validator as the single source of validation rules.
-- Updated OpenAI skill packaging guidance to keep the uploaded zip shaped around
-  one top-level `watchlist-md/` skill directory.
-- Removed the unused alternate owner value before publishing 0.4.2.
+- Rejected invalid calendar IDs, sequence `000`, near-miss headings, hidden
+  pseudo-items, duplicated sections, unknown schema-like keys, and invalid file
+  encoding without tracebacks.
+- Hardened the dependency-free semantic linter against unknown keys, duplicate
+  nested YAML keys, invalid root/types, and date-only `fixed_now` values.
+- Replaced destructive copy-update instructions and ambiguous historical-tag
+  release steps with backup-first and exact-commit procedures.
+- Marked the legacy top-level `mode` field as ignored and deprecated instead of
+  silently accepting it.
 
 ## [0.4.1] - 2026-05-27
 

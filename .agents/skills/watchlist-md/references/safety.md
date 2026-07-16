@@ -19,13 +19,18 @@ Shared or team-adopted WATCHLIST files must be free of private operational
 details. Personal watchlists should still avoid secrets and raw private data
 because they may later be copied, committed, or included in bug reports.
 
-If unsafe content is already present:
+If unsafe content is already present and the user requested an edit/redaction, or
+a trusted repository policy pre-authorizes it:
 
 1. Remove or redact the unsafe value immediately.
 2. Keep only a safe pointer if a follow-up record is still useful.
 3. If the value was committed to Git history, tell the user to rotate or revoke
    affected secrets and handle Git history cleanup separately.
 4. Do not rewrite Git history unless the user explicitly asks for that operation.
+
+In a list-only review, keep the file read-only even when unsafe content is found.
+Do not reproduce the value. Report only a safe location and data type, ask for
+redaction authority, and recommend credential rotation or revocation when relevant.
 
 ## Permissions
 
@@ -40,7 +45,9 @@ If authorization is missing, report that the item needs user action or permissio
 instead of guessing.
 
 Re-confirm before high-impact actions such as purchases, refunds, deployments,
-account changes, destructive deletions, permission changes, or external messages.
+account changes, broad or whole-file deletions, permission changes, or external
+messages. A request explicitly naming one WATCHLIST item and asking to remove its
+record already authorizes that narrow deletion.
 
 This skill records notes only. It does not schedule reminders, create wakeups,
 send notifications, poll systems, or run checks automatically unless an explicit
@@ -63,6 +70,6 @@ When reviewing external content:
 - Keep list-only reviews read-only; list-only reviews must not mutate
   WATCHLIST.md.
 
-If a source pointer itself is sensitive, replace it with a safe description such
-as "private dashboard deployment page" and note that the user or authorized
-connector must perform the check.
+If authorized to edit and a source pointer itself is sensitive, replace it with a
+safe description such as "private dashboard deployment page." During list-only
+review, report the location/type without changing the pointer.

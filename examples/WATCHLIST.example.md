@@ -5,6 +5,7 @@ automation: none
 timezone: Asia/Seoul
 archive_policy: manual
 
+<!-- Asia/Seoul is a sample/fallback. When creating a target, replace it with the resolved IANA timezone before adding an item. -->
 <!-- Starter template for repository-local watchlists. In target repositories, treat repo-local watchlists as personal workspace notes unless the team explicitly adopts them. -->
 <!-- This file records deferred checks for explicit review. It is not a scheduler, reminder service, or automation mechanism. -->
 <!-- Do not store sensitive content or credential-bearing links. Use safe pointers instead. -->

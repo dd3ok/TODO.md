@@ -1,7 +1,7 @@
 {
   "id": "no-existing-watchlist-default-local-private",
   "category": "storage-policy",
-  "prompt": "Add this to watchlist. Check local test logs today at 18:00.",
+  "prompt": "Add this to WATCHLIST.md. Check local test logs today at 18:00.",
   "locale": "en",
   "fixed_now": "2026-05-14T16:30:00+09:00",
   "fixture": "empty.watchlist.md",

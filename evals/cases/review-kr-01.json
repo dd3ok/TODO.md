@@ -8,6 +8,7 @@
   "expected": {
     "operation": "review_items",
     "mutates_file": false,
+    "must_not_modify_watchlist": true,
     "groups": [
       "overdue",
       "due today",

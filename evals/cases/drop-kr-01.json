@@ -13,6 +13,11 @@
       "result"
     ],
     "deletes_item": false,
-    "preserves_record": true
+    "preserves_record": true,
+    "default_section": "## Done",
+    "must_not": [
+      "delete_item",
+      "rewrite_unrelated_items"
+    ]
   }
 }

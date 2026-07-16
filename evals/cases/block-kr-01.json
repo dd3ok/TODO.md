@@ -1,0 +1,23 @@
+{
+  "id": "block-kr-01",
+  "prompt": "WL-20260507-001 외부 승인 대기 중이야. 차단 처리하고 다음 단계에 승인 확인을 기록해.",
+  "locale": "ko",
+  "fixed_now": "2026-05-14T16:30:00+09:00",
+  "fixture": "with-open-item.watchlist.md",
+  "should_trigger_skill": true,
+  "expected": {
+    "operation": "block_item",
+    "item_id": "WL-20260507-001",
+    "status": "blocked",
+    "required_updates": [
+      "last_checked_at",
+      "result",
+      "next_step_on_fail"
+    ],
+    "default_section": "## Open",
+    "must_not": [
+      "delete_item",
+      "move_to_done"
+    ]
+  }
+}

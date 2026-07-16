@@ -1,12 +1,14 @@
 {
-  "id": "no-existing-watchlist-default-local-private-kr",
+  "id": "existing-root-private-scope-mismatch-kr",
   "category": "storage-policy",
-  "prompt": "WATCHLIST.md에 남겨. 오늘 18:00에 로컬 테스트 로그 확인.",
+  "prompt": "개인 로컬 메모로 WATCHLIST.md에 남겨. 오늘 18:00에 테스트 결과 확인.",
   "locale": "ko",
   "fixed_now": "2026-05-14T16:30:00+09:00",
   "fixture": "empty.watchlist.md",
   "workspace": {
-    "existing_paths": [],
+    "existing_paths": [
+      "WATCHLIST.md"
+    ],
     "ignored_paths": [
       ".watchlist/WATCHLIST.md"
     ]
@@ -36,7 +38,7 @@
       "scope": "local_private",
       "must_not": [
         "write_shared_state_to_private_watchlist",
-        "create_root_watchlist_without_shared_team_intent"
+        "reuse_shared_root_for_private_note"
       ]
     }
   }

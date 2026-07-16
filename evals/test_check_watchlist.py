@@ -122,6 +122,19 @@ class CheckWatchlistTests(unittest.TestCase):
             check=False,
         )
 
+    def run_release_metadata_fixture(self, version, changelog, *args):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "VERSION").write_text(version, encoding="utf-8")
+            (root / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(RELEASE_SCRIPT), str(root), *args],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
     def assert_check_fails(self, text, expected_message):
         result = self.run_check(text)
 
@@ -231,6 +244,11 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails(text, "Invalid due_at")
 
+    def test_item_id_date_must_match_created_at_local_date(self):
+        text = VALID_WATCHLIST.replace("WL-20260514-001", "WL-20260513-001")
+
+        self.assert_check_fails(text, "ID_CREATED_DATE_MISMATCH")
+
     def test_open_item_requires_semantic_field_values(self):
         for field in ("source", "trigger", "action", "done_when"):
             with self.subTest(field=field):
@@ -276,6 +294,31 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails(text, "Malformed WATCHLIST item heading")
 
+    def test_lowercase_watchlist_heading_fails(self):
+        text = VALID_WATCHLIST.replace("### WL-20260514-001", "### wl-20260514-001")
+
+        self.assert_check_fails(text, "Malformed WATCHLIST item heading")
+
+    def test_wrong_heading_level_fails(self):
+        text = VALID_WATCHLIST.replace("### WL-20260514-001", "#### WL-20260514-001")
+
+        self.assert_check_fails(text, "Malformed WATCHLIST item heading")
+
+    def test_invalid_calendar_date_in_id_fails(self):
+        text = VALID_WATCHLIST.replace("WL-20260514-001", "WL-20260230-001")
+
+        self.assert_check_fails(text, "INVALID_ID_DATE")
+
+    def test_zero_id_sequence_fails(self):
+        text = VALID_WATCHLIST.replace("WL-20260514-001", "WL-20260514-000")
+
+        self.assert_check_fails(text, "INVALID_ID_SEQUENCE")
+
+    def test_empty_heading_title_fails(self):
+        text = VALID_WATCHLIST.replace("### WL-20260514-001 — CI result check", "### WL-20260514-001 —   ")
+
+        self.assert_check_fails(text, "Malformed WATCHLIST item heading")
+
     def test_default_mode_accepts_hyphen_heading_separator(self):
         text = VALID_WATCHLIST.replace(" — CI result check", " - CI result check")
 
@@ -299,6 +342,22 @@ class CheckWatchlistTests(unittest.TestCase):
         )
 
         self.assert_check_fails_with_args(text, "FIELD_ORDER", "--strict-format")
+
+    def test_strict_format_rejects_hyphenated_unknown_item_field(self):
+        text = VALID_WATCHLIST.replace(
+            "- result:\n",
+            "- custom-field: unexpected\n- result:\n",
+        )
+
+        self.assert_check_fails_with_args(text, "UNKNOWN_FIELD", "--strict-format")
+
+    def test_strict_format_rejects_uppercase_unknown_item_field(self):
+        text = VALID_WATCHLIST.replace(
+            "- result:\n",
+            "- Note: unexpected\n- result:\n",
+        )
+
+        self.assert_check_fails_with_args(text, "UNKNOWN_FIELD", "--strict-format")
 
     def test_require_archive_section_rejects_missing_archive(self):
         self.assert_check_fails_with_args(
@@ -422,6 +481,18 @@ class CheckWatchlistTests(unittest.TestCase):
             "--strict-format",
         )
 
+    def test_hyphenated_unknown_top_level_field_fails_strict_format(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\narchive-policy: suggest\n",
+        )
+
+        self.assert_check_fails_with_args(
+            text,
+            "UNKNOWN_TOP_LEVEL_FIELD",
+            "--strict-format",
+        )
+
     def test_strict_safety_rejects_bearer_token(self):
         text = VALID_WATCHLIST.replace(
             "- source: GitHub Actions run for PR #12",
@@ -508,6 +579,44 @@ timezone: Asia/Seoul
 
         self.assert_check_fails(text, "Missing WATCHLIST skeleton field")
 
+    def test_unclosed_comment_does_not_count_as_structure(self):
+        text = "<!--\n" + VALID_WATCHLIST
+
+        self.assert_check_fails(text, "Missing WATCHLIST skeleton field")
+
+    def test_fenced_document_does_not_count_as_structure(self):
+        text = f"```md\n{VALID_WATCHLIST}\n```\n"
+
+        self.assert_check_fails(text, "Missing WATCHLIST skeleton field")
+
+    def test_underscore_id_heading_is_reported_as_malformed(self):
+        text = VALID_WATCHLIST.replace(
+            "### WL-20260514-001 — CI result check",
+            "### WL_20260514_001 — CI result check",
+        )
+
+        self.assert_check_fails_with_args(text, "MALFORMED_HEADING", "--strict-format")
+
+    def test_indented_code_heading_is_not_treated_as_live_structure(self):
+        text = VALID_WATCHLIST + "\n    ### WL_20260514_999 — code sample\n"
+
+        result = self.run_check(text, "--strict-format")
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_fenced_secret_is_still_scanned_for_safety(self):
+        text = (
+            VALID_WATCHLIST
+            + "\n```text\nAuthorization: Bearer ghp_123456789012345678901234567890123456\n```\n"
+        )
+
+        self.assert_check_fails_with_args(text, "AUTHORIZATION_HEADER", "--strict-safety")
+
+    def test_duplicate_done_section_fails(self):
+        text = VALID_WATCHLIST + "\n## Done\n"
+
+        self.assert_check_fails(text, "DUPLICATE_SKELETON_SECTION")
+
     def test_missing_open_section_fails_skeleton_validation(self):
         text = VALID_WATCHLIST.replace("## Open\n\n", "")
 
@@ -531,6 +640,25 @@ timezone: Asia/Seoul
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("WATCHLIST file not found", result.stderr + result.stdout)
+        self.assertNotIn("Traceback", result.stderr + result.stdout)
+
+    def test_utf8_bom_file_passes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "WATCHLIST.md"
+            path.write_text(VALID_WATCHLIST, encoding="utf-8-sig")
+            result = self.run_check_path(path)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_invalid_utf8_json_failure_is_structured(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "WATCHLIST.md"
+            path.write_bytes(b"# WATCHLIST.md\n\xff\n")
+            result = self.run_check_path(path, "--json")
+
+        self.assertNotEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["errors"][0]["code"], "INVALID_UTF8")
         self.assertNotIn("Traceback", result.stderr + result.stdout)
 
     def test_snoozed_requires_result_and_last_checked_at(self):
@@ -603,6 +731,18 @@ timezone: Asia/Seoul
         text = template.read_text(encoding="utf-8")
 
         self.assertNotIn("mode: template", text)
+
+    def test_legacy_mode_field_warns_that_it_has_no_effect(self):
+        text = VALID_WATCHLIST.replace(
+            "timezone: Asia/Seoul\n",
+            "timezone: Asia/Seoul\nmode: template\n",
+        )
+
+        result = self.run_check(text)
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("DEPRECATED_MODE_FIELD", result.stdout)
+        self.assertIn("has no effect", result.stdout)
 
     def test_installable_skill_bundle_contains_runtime_resources(self):
         expected_files = [
@@ -772,7 +912,10 @@ timezone: Asia/Seoul
     def test_format_reference_is_runtime_neutral(self):
         text = (SKILL_DIR / "references" / "format.md").read_text(encoding="utf-8")
 
-        self.assertIn("If the current repository already provides a WATCHLIST validator", text)
+        self.assertIn(
+            "Run a repository validator only when the repository/user explicitly provides and trusts it",
+            " ".join(text.split()),
+        )
         self.assertNotIn("tools/validate_watchlist.py", text)
         self.assertNotIn("source-repository maintainer", text)
 
@@ -813,10 +956,7 @@ timezone: Asia/Seoul
         self.assertIn("Do not stage or commit `.watchlist/WATCHLIST.md`", text)
         self.assertIn("Use root `WATCHLIST.md` only for explicitly shared team state", text)
         self.assertIn(
-            (
-                "If both root `WATCHLIST.md` and `.watchlist/WATCHLIST.md` exist "
-                "and scope remains unclear, mention both and ask before writing."
-            ),
+            "If both exist and scope is unclear, ask before writing.",
             " ".join(text.split()),
         )
 
@@ -848,7 +988,16 @@ timezone: Asia/Seoul
         self.assertLessEqual(len(english.splitlines()), 120)
         self.assertLessEqual(len(korean.splitlines()), 120)
         self.assertIn("AgentSkills-compatible Markdown workflow", english)
-        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes", english)
+        self.assertIn(
+            "Google Antigravity directory-based Agent Skills surfaces",
+            english,
+        )
+        for runtime in ["Codex", "Claude Code", "Kilo", "OpenClaw", "Hermes"]:
+            self.assertIn(runtime, english)
+        self.assertIn(
+            "Gemini CLI with Gemini Code Assist Standard/Enterprise or paid Gemini/Enterprise Agent Platform API keys",
+            english,
+        )
         self.assertIn("not an autonomous scheduler", english)
         self.assertIn("## Quickstart", english)
         self.assertIn("## Skill Directory", english)
@@ -865,7 +1014,16 @@ timezone: Asia/Seoul
         self.assertIn("not the repository root", normalized_english)
 
         self.assertIn("AgentSkills 호환 Markdown workflow", korean)
-        self.assertIn("Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes", korean)
+        self.assertIn(
+            "Google Antigravity의 directory 기반 Agent Skills surface",
+            korean,
+        )
+        for runtime in ["Codex", "Claude Code", "Kilo", "OpenClaw", "Hermes"]:
+            self.assertIn(runtime, korean)
+        self.assertIn(
+            "Gemini Code Assist Standard/Enterprise 또는 유료 Gemini/Enterprise Agent Platform API key",
+            korean,
+        )
         self.assertIn("자율 알림", korean)
         self.assertIn("## Quickstart", korean)
         self.assertIn("## Skill Directory", korean)
@@ -902,6 +1060,7 @@ timezone: Asia/Seoul
         storage = (REPO_ROOT / "docs" / "storage-and-privacy.md").read_text(
             encoding="utf-8"
         )
+        normalized_storage = " ".join(storage.split())
 
         self.assertIn("docs/storage-and-privacy.md", english)
         self.assertIn("docs/storage-and-privacy.md", korean)
@@ -912,7 +1071,11 @@ timezone: Asia/Seoul
         self.assertIn("Do not add a full CLI or MCP server for the MVP flow", storage)
         self.assertIn("The installable skill bundle is intentionally Python-free", storage)
         self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", storage)
-        self.assertIn("Gemini CLI, Kilo, and OpenClaw document `.agents/skills` discovery", storage)
+        self.assertIn(
+            "Google Antigravity directory-based Agent Skills surfaces and Gemini CLI with Gemini Code Assist Standard/Enterprise or paid Gemini/Enterprise Agent Platform API keys",
+            normalized_storage,
+        )
+        self.assertIn("Kilo, and OpenClaw document `.agents/skills` discovery", storage)
         self.assertIn("Hermes uses", storage)
 
     def test_runtime_references_define_enum_and_section_semantics(self):
@@ -944,21 +1107,25 @@ timezone: Asia/Seoul
             encoding="utf-8"
         )
 
+        self.assertIn("Before updating, inspect whether the installed copy has local changes", install)
         self.assertIn(
-            "Update an existing personal install by removing the target first",
-            install,
+            'backup_root="$HOME/.watchlist-md-skill-backups/claude"', install
         )
-        self.assertIn("rm -rf ~/.claude/skills/watchlist-md", install)
-        self.assertIn("mkdir -p ~/.claude/skills", install)
+        self.assertIn("mktemp -d", install)
+        self.assertNotIn("rm -rf", install)
+        self.assertIn('mkdir -p "$HOME/.claude/skills"', install)
         self.assertIn("Codex detects newly installed skills automatically", install)
         self.assertIn("$watchlist-md Add this to WATCHLIST.md", install)
         self.assertIn("## Vendor Paths And Guides", install)
         for url in [
             "https://learn.chatgpt.com/docs/build-skills",
             "https://code.claude.com/docs/en/skills",
+            "https://antigravity.google/docs/skills",
+            "https://antigravity.google/docs/cli-plugins",
             "https://geminicli.com/docs/cli/using-agent-skills/",
+            "https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/",
             "https://kilo.ai/docs/customize/skills",
-            "https://docs.openclaw.ai/skills",
+            "https://docs.openclaw.ai/tools/skills",
             "https://hermes-agent.nousresearch.com/docs/guides/work-with-skills",
         ]:
             with self.subTest(url=url):
@@ -968,6 +1135,8 @@ timezone: Asia/Seoul
             release,
         )
         self.assertIn("git diff --name-only -- .agents/skills/watchlist-md", release)
+        self.assertIn('gh run watch "${run_id}"', release)
+        self.assertGreaterEqual(release.count("set -euo pipefail"), 3)
         self.assertNotIn(
             "git diff HEAD --name-only -- .agents/skills/watchlist-md",
             release,
@@ -975,7 +1144,11 @@ timezone: Asia/Seoul
 
         for text in [install, release]:
             with self.subTest():
-                self.assertIn("zip -r watchlist-md-skill.zip watchlist-md", text)
+                self.assertIn(
+                    "git archive --format=zip --prefix=watchlist-md/",
+                    text,
+                )
+                self.assertIn("check_skill_package.py --archive", text)
                 self.assertIn("watchlist-md/SKILL.md", text)
                 self.assertIn("tools/validate_watchlist.py", text)
                 self.assertNotIn("watchlist-md/scripts/validate_watchlist.py", text)
@@ -998,6 +1171,31 @@ timezone: Asia/Seoul
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Skill package check passed", result.stdout)
+
+    def test_documented_runtime_package_lists_match_manifest(self):
+        expected_release = set(PACKAGE_CHECK.REQUIRED_FILES)
+        expected_readme = {
+            ".agents/skills/" + path for path in expected_release
+        }
+
+        release = (REPO_ROOT / "docs" / "maintainers" / "release.md").read_text(
+            encoding="utf-8"
+        )
+        release_block = release.split("It contains exactly:", 1)[1].split(
+            "```text", 1
+        )[1].split("```", 1)[0]
+        self.assertEqual(set(release_block.split()), expected_release)
+
+        for name in ["README.md", "README.ko.md"]:
+            with self.subTest(name=name):
+                readme = (REPO_ROOT / name).read_text(encoding="utf-8")
+                readme_block = readme.split("```text\n.agents/skills/watchlist-md/SKILL.md", 1)[
+                    1
+                ].split("```", 1)[0]
+                documented = {".agents/skills/watchlist-md/SKILL.md"} | set(
+                    readme_block.split()
+                )
+                self.assertEqual(documented, expected_readme)
 
     def test_skill_package_checker_rejects_repository_only_paths_under_package_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1081,6 +1279,22 @@ timezone: Asia/Seoul
 
         self.assertIn("duplicate package file(s): watchlist-md/SKILL.md", errors)
 
+    def test_skill_package_checker_reports_invalid_zip_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "bad.zip"
+            path.write_text("not a zip", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(PACKAGE_SCRIPT), "--archive", str(path)],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid or unreadable zip archive", result.stderr)
+        self.assertNotIn("Traceback", result.stderr + result.stdout)
+
     def test_bundled_license_matches_repository_license(self):
         self.assertEqual(
             (SKILL_DIR / "LICENSE.txt").read_text(encoding="utf-8"),
@@ -1122,16 +1336,45 @@ timezone: Asia/Seoul
         self.assertIn("Smoke test maintainer validator", workflow)
         self.assertIn("python tools/validate_watchlist.py", workflow)
 
+    def test_ci_does_not_duplicate_push_checks_for_pr_branches(self):
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("push:\n    branches: [main]", workflow)
+        self.assertIn('tags: ["v*"]', workflow)
+        self.assertIn("pull_request:\n    branches: [main]", workflow)
+
     def test_runtime_smoke_doc_tracks_pending_vendor_matrix(self):
         text = (REPO_ROOT / "docs" / "runtime-smoke.md").read_text(encoding="utf-8")
+        normalized_text = " ".join(text.split())
 
-        for runtime in ["Codex", "Claude Code", "Gemini CLI", "Kilo", "OpenClaw", "Hermes"]:
+        for runtime in [
+            "Codex",
+            "Claude Code",
+            "Google Antigravity",
+            "Gemini CLI",
+            "Kilo",
+            "OpenClaw",
+            "Hermes",
+        ]:
             self.assertIn(runtime, text)
         self.assertIn("pending", text)
-        self.assertIn("Record only real runtime results", text)
-        self.assertIn("Do not store transcripts, screenshots, raw logs, or long runtime output.", text)
+        self.assertIn("Record only real runtime results", normalized_text)
+        self.assertIn(
+            "Do not store transcripts, screenshots, raw logs, or long runtime output.",
+            normalized_text,
+        )
         self.assertIn("without a bundled Python validator", text)
-        self.assertLessEqual(len(text.splitlines()), 35)
+        for evidence in ["`D` — discovery", "`E` — explicit invocation", "`B` — behavior", "`R` — routing"]:
+            self.assertIn(evidence, text)
+        self.assertIn("40-character source commit SHA", text)
+        self.assertIn("model/mode", text)
+        self.assertIn("list-review-no-mutate-kr", text)
+        self.assertIn("trigger-watchlist-review-en", text)
+        self.assertIn("no-trigger-generic-reminder-en", text)
+        self.assertIn("requires trusted-workspace setup and user activation consent", text)
+        self.assertLessEqual(len(text.splitlines()), 65)
 
     def test_trigger_eval_corpus_is_small_balanced_and_deterministic(self):
         cases = json.loads(TRIGGER_CASES.read_text(encoding="utf-8"))
@@ -1257,6 +1500,8 @@ timezone: Asia/Seoul
         self.assertIn(".watchlist/*", gitignore)
         self.assertIn("!.watchlist/.gitkeep", gitignore)
         self.assertTrue((REPO_ROOT / ".watchlist" / ".gitkeep").is_file())
+        self.assertIn("dist/", gitignore)
+        self.assertIn("watchlist-md-skill.zip", gitignore)
 
     def test_self_checks_include_lifecycle_cases(self):
         text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
@@ -1269,7 +1514,29 @@ timezone: Asia/Seoul
         self.assertIn("id: drop-kr-01", text)
         self.assertIn("id: delete-kr-01", text)
         self.assertIn("id: archive-kr-01", text)
+        self.assertIn("id: snooze-kr-01", text)
+        self.assertIn("id: block-kr-01", text)
+        self.assertIn("id: reopen-kr-01", text)
         self.assertIn("id: permission-kr-01", text)
+
+    def test_semantic_cases_cover_active_lifecycle_transitions(self):
+        expected = {
+            "snooze-kr-01": ("snooze_item", "snoozed"),
+            "block-kr-01": ("block_item", "blocked"),
+            "reopen-kr-01": ("reopen_item", "open"),
+        }
+
+        for case_id, (operation, status) in expected.items():
+            with self.subTest(case_id=case_id):
+                case = json.loads(
+                    (REPO_ROOT / "evals" / "cases" / f"{case_id}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual(case["expected"]["operation"], operation)
+                self.assertEqual(case["expected"]["status"], status)
+                self.assertEqual(case["expected"]["default_section"], "## Open")
+                self.assertIn("result", case["expected"]["required_updates"])
 
     def test_self_checks_include_broad_negative_trigger_cases(self):
         text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(encoding="utf-8")
@@ -1323,6 +1590,31 @@ timezone: Asia/Seoul
                     "write_shared_state_to_private_watchlist",
                     case["expected"]["storage"]["must_not"],
                 )
+
+    def test_semantic_cases_do_not_reuse_existing_target_with_wrong_scope(self):
+        expected = {
+            "existing-root-private-scope-mismatch-kr": (
+                ["WATCHLIST.md"],
+                ".watchlist/WATCHLIST.md",
+                "local_private",
+            ),
+            "existing-dot-shared-scope-mismatch-kr": (
+                [".watchlist/WATCHLIST.md"],
+                "WATCHLIST.md",
+                "shared_project",
+            ),
+        }
+
+        for case_id, (existing, target, scope) in expected.items():
+            with self.subTest(case_id=case_id):
+                case = json.loads(
+                    (REPO_ROOT / "evals" / "cases" / f"{case_id}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual(case["workspace"]["existing_paths"], existing)
+                self.assertEqual(case["expected"]["storage"]["target"], target)
+                self.assertEqual(case["expected"]["storage"]["scope"], scope)
 
     def test_semantic_case_validation_rejects_unknown_category(self):
         case = {
@@ -1490,6 +1782,73 @@ timezone: Asia/Seoul
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Release metadata check passed", result.stdout)
 
+    def test_release_metadata_rejects_leading_zero_semver(self):
+        result = self.run_release_metadata_fixture(
+            "01.2.3\n",
+            "# Changelog\n\n## [Unreleased]\n\n## [1.2.3] - 2026-07-17\n",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("strict semver", result.stderr)
+
+    def test_release_metadata_requires_version_to_match_first_release(self):
+        result = self.run_release_metadata_fixture(
+            "0.4.1\n",
+            (
+                "# Changelog\n\n## [Unreleased]\n\n"
+                "## [0.4.2] - 2026-07-17\n\n"
+                "## [0.4.1] - 2026-05-27\n"
+            ),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("first release heading", result.stderr)
+
+    def test_release_metadata_rejects_invalid_calendar_date(self):
+        result = self.run_release_metadata_fixture(
+            "0.4.2\n",
+            "# Changelog\n\n## [Unreleased]\n\n## [0.4.2] - 2026-99-99\n",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid release date", result.stderr)
+
+    def test_release_metadata_rejects_duplicate_release_heading(self):
+        result = self.run_release_metadata_fixture(
+            "0.4.2\n",
+            (
+                "# Changelog\n\n## [Unreleased]\n\n"
+                "## [0.4.2] - 2026-07-17\n\n"
+                "## [0.4.2] - 2026-07-16\n"
+            ),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("duplicate release version", result.stderr)
+
+    def test_release_mode_requires_empty_unreleased_section(self):
+        result = self.run_release_metadata_fixture(
+            "0.4.2\n",
+            (
+                "# Changelog\n\n## [Unreleased]\n\n- pending change\n\n"
+                "## [0.4.2] - 2026-07-17\n"
+            ),
+            "--release",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must be empty", result.stderr)
+
+    def test_release_mode_accepts_empty_unreleased_section(self):
+        result = self.run_release_metadata_fixture(
+            "0.4.2\n",
+            "# Changelog\n\n## [Unreleased]\n\n## [0.4.2] - 2026-07-17\n",
+            "--release",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertIn("Release-ready metadata check passed", result.stdout)
+
     def test_policy_marker_checker_passes(self):
         result = self.run_script(POLICY_SCRIPT)
 
@@ -1591,6 +1950,39 @@ timezone: Asia/Seoul
             "\n".join(errors),
         )
 
+    def test_semantic_self_check_subset_rejects_duplicate_nested_keys(self):
+        text = """cases:
+  - id: sample
+    prompt: 'Show WATCHLIST.md'
+    expected:
+      mutates_file: false
+      mutates_file: true
+"""
+        errors = []
+
+        SEMANTIC_CASES.validate_self_check_yaml_subset(text, errors)
+
+        self.assertIn(
+            "duplicate mapping key mutates_file",
+            "\n".join(errors),
+        )
+
+    def test_semantic_self_check_subset_rejects_unknown_expected_key(self):
+        text = """fixed_now: '2026-05-14T16:30:00+09:00'
+forbidden_response_substrings:
+  - 'never'
+cases:
+  - id: sample
+    prompt: 'Show WATCHLIST.md'
+    expected:
+      mutates_flie: false
+"""
+        errors = []
+
+        SEMANTIC_CASES.validate_self_check_yaml_subset(text, errors)
+
+        self.assertIn("unsupported expected key mutates_flie", "\n".join(errors))
+
     def test_semantic_self_check_parser_reads_trigger_expectation(self):
         text = """cases:
   - id: sample
@@ -1659,6 +2051,83 @@ timezone: Asia/Seoul
         SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": None}}, errors)
 
         self.assertIn("sample-case: prompt could not be parsed from self_checks.yaml", errors)
+
+    def test_semantic_case_rejects_unknown_top_level_and_expected_keys(self):
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "review-kr-01.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["fixture_path"] = "typo"
+        case["expected"]["mutates_flie"] = False
+        prompts = {
+            case["id"]: {
+                "id": case["id"],
+                "should_trigger": "true",
+                "prompt": case["prompt"],
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(
+            case,
+            prompts,
+            {case["id"]: {"prompt": case["prompt"]}},
+            errors,
+        )
+
+        self.assertIn("review-kr-01: unsupported case key(s): fixture_path", errors)
+        self.assertIn("review-kr-01: unsupported expected key(s): mutates_flie", errors)
+
+    def test_semantic_case_rejects_date_only_fixed_now(self):
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "generic-delete-file-en.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["fixed_now"] = "2026-05-15"
+        prompts = {
+            case["id"]: {
+                "id": case["id"],
+                "should_trigger": "false",
+                "prompt": case["prompt"],
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(
+            case,
+            prompts,
+            {case["id"]: {"prompt": case["prompt"]}},
+            errors,
+        )
+
+        self.assertIn(
+            "generic-delete-file-en: fixed_now must include time and timezone offset",
+            errors,
+        )
+
+    def test_semantic_case_rejects_non_object_root_without_crashing(self):
+        errors = []
+
+        SEMANTIC_CASES.validate_case([], {}, {}, errors)
+
+        self.assertEqual(errors, ["semantic case root value must be an object"])
+
+    def test_trigger_case_validation_rejects_non_string_decision_and_reason(self):
+        errors = []
+        case = {
+            "id": "bad-types",
+            "locale": "en",
+            "prompt": "Add this to WATCHLIST.md.",
+            "expected": [],
+            "reason": [],
+        }
+
+        SEMANTIC_CASES.validate_trigger_case_list([case], errors)
+
+        self.assertIn("bad-types: expected must be trigger or no_trigger", errors)
+        self.assertIn("bad-types: reason must be a supported string", errors)
 
     def test_semantic_positive_case_requires_explicit_watchlist_context(self):
         case = json.loads(
@@ -1753,6 +2222,49 @@ timezone: Asia/Seoul
             errors,
         )
 
+    def test_semantic_archive_suggestion_matches_fixture_policy_and_age(self):
+        case = json.loads(
+            (
+                REPO_ROOT
+                / "evals"
+                / "cases"
+                / "archive-suggest-policy-kr.json"
+            ).read_text(encoding="utf-8")
+        )
+        manual_fixture = (
+            REPO_ROOT
+            / "evals"
+            / "fixtures"
+            / "with-old-done-items-manual-policy.watchlist.md"
+        ).read_text(encoding="utf-8")
+        errors = []
+
+        SEMANTIC_CASES.validate_review_items(
+            case["id"],
+            case["expected"],
+            errors,
+            fixture_text=manual_fixture,
+            fixed_now=case["fixed_now"],
+        )
+
+        self.assertIn(
+            "archive-suggest-policy-kr: archive suggestion fixture must use archive_policy=suggest",
+            errors,
+        )
+
+        invalid_time_errors = []
+        SEMANTIC_CASES.validate_review_items(
+            case["id"],
+            case["expected"],
+            invalid_time_errors,
+            fixture_text=manual_fixture,
+            fixed_now="2026-05-15",
+        )
+        self.assertIn(
+            "archive-suggest-policy-kr: archive suggestion fixture has no eligible item",
+            invalid_time_errors,
+        )
+
     def test_semantic_add_item_collision_contract_requires_stop_and_report(self):
         errors = []
 
@@ -1777,6 +2289,319 @@ timezone: Asia/Seoul
         )
         self.assertIn(
             "duplicate-id-stop-and-report-kr: add_item collision contract must set on_duplicate_id=stop_and_report",
+            errors,
+        )
+
+    def test_semantic_timestamp_rejects_invalid_offset_minutes(self):
+        errors = []
+
+        SEMANTIC_CASES.validate_iso_timestamp(
+            "2026-05-15T10:00:00+09:99",
+            "sample",
+            errors,
+            "fixed_now",
+        )
+
+        self.assertIn("sample: fixed_now must include time and timezone offset", errors)
+
+    def test_semantic_active_transition_rejects_terminal_source_item(self):
+        fixture = (
+            REPO_ROOT / "evals" / "fixtures" / "with-archivable-items.watchlist.md"
+        ).read_text(encoding="utf-8")
+        expected = {
+            "operation": "snooze_item",
+            "item_id": "WL-20260401-001",
+            "status": "snoozed",
+            "due_at": "2026-05-15T10:00:00+09:00",
+            "required_updates": ["due_at", "last_checked_at", "result"],
+            "default_section": "## Open",
+            "must_not": ["delete_item"],
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_active_transition(
+            "snooze_item",
+            "snoozed",
+            {"due_at", "last_checked_at", "result"},
+            "sample",
+            expected,
+            fixture,
+            errors,
+        )
+
+        self.assertIn("sample: snooze_item fixture item must have an active status", errors)
+
+    def test_semantic_complete_and_drop_reject_terminal_source_item(self):
+        fixture = (
+            REPO_ROOT / "evals" / "fixtures" / "with-archivable-items.watchlist.md"
+        ).read_text(encoding="utf-8")
+
+        for case_name, validator, operation in [
+            ("complete-kr-01", SEMANTIC_CASES.validate_complete_item, "complete_item"),
+            ("drop-kr-01", SEMANTIC_CASES.validate_drop_item, "drop_item"),
+        ]:
+            with self.subTest(operation=operation):
+                expected = json.loads(
+                    (REPO_ROOT / "evals" / "cases" / f"{case_name}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )["expected"]
+                expected["item_id"] = "WL-20260401-001"
+                errors = []
+                validator("sample", expected, fixture, errors)
+                self.assertIn(
+                    f"sample: {operation} fixture item must have an active status",
+                    errors,
+                )
+
+    def test_semantic_reopen_supports_snoozed_target_contract(self):
+        fixture = (
+            REPO_ROOT / "evals" / "fixtures" / "with-archivable-items.watchlist.md"
+        ).read_text(encoding="utf-8")
+        expected = {
+            "operation": "reopen_item",
+            "item_id": "WL-20260401-001",
+            "status": "snoozed",
+            "due_at": "2026-05-15T10:00:00+09:00",
+            "required_updates": ["due_at", "last_checked_at", "result"],
+            "default_section": "## Open",
+            "must_not": ["delete_item"],
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_reopen_item("sample", expected, fixture, errors)
+
+        self.assertEqual(errors, [])
+
+    def test_semantic_fixture_invalid_utf8_is_reported_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_dir = Path(tmpdir)
+            (fixture_dir / "bad.watchlist.md").write_bytes(b"\xff")
+            original = SEMANTIC_CASES.FIXTURES_DIR
+            errors = []
+            try:
+                SEMANTIC_CASES.FIXTURES_DIR = fixture_dir
+                text = SEMANTIC_CASES.validate_fixture(
+                    "bad.watchlist.md", "sample", errors
+                )
+            finally:
+                SEMANTIC_CASES.FIXTURES_DIR = original
+
+        self.assertEqual(text, "")
+        self.assertIn("sample: fixture could not be read as UTF-8", "\n".join(errors))
+
+    def test_semantic_fixture_lookup_ignores_commented_item(self):
+        fixture = """# WATCHLIST.md
+
+schema_version: 1
+automation: none
+timezone: Asia/Seoul
+
+## Open
+
+<!--
+### WL-20260101-001 — Commented example
+- status: open
+-->
+
+## Done
+
+## Archive
+"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_dir = Path(tmpdir)
+            (fixture_dir / "commented.watchlist.md").write_text(
+                fixture, encoding="utf-8"
+            )
+            original = SEMANTIC_CASES.FIXTURES_DIR
+            errors = []
+            try:
+                SEMANTIC_CASES.FIXTURES_DIR = fixture_dir
+                fixture_text = SEMANTIC_CASES.validate_fixture(
+                    "commented.watchlist.md", "sample", errors
+                )
+            finally:
+                SEMANTIC_CASES.FIXTURES_DIR = original
+
+        SEMANTIC_CASES.require_item_in_fixture(
+            {"item_id": "WL-20260101-001"}, fixture_text, "sample", errors
+        )
+        self.assertIn(
+            "sample: fixture does not contain item_id WL-20260101-001",
+            errors,
+        )
+
+    def test_semantic_validators_reject_invalid_exact_contract_values(self):
+        fixture = (
+            REPO_ROOT / "evals" / "fixtures" / "with-open-item.watchlist.md"
+        ).read_text(encoding="utf-8")
+
+        complete = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "complete-kr-01.json").read_text(
+                encoding="utf-8"
+            )
+        )["expected"]
+        complete["default_section"] = "## Open"
+        complete["completion_evidence"] = "guessed"
+        complete_errors = []
+        SEMANTIC_CASES.validate_complete_item(
+            "complete", complete, fixture, complete_errors
+        )
+        self.assertIn(
+            "complete: complete_item default_section must be ## Done",
+            complete_errors,
+        )
+        self.assertIn(
+            "complete: complete_item completion_evidence must identify the evidence source",
+            complete_errors,
+        )
+
+        complete["completion_evidence"] = []
+        list_evidence_errors = []
+        SEMANTIC_CASES.validate_complete_item(
+            "complete-list", complete, fixture, list_evidence_errors
+        )
+        self.assertIn(
+            "complete-list: complete_item completion_evidence must identify the evidence source",
+            list_evidence_errors,
+        )
+
+        archive = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "archive-kr-01.json").read_text(
+                encoding="utf-8"
+            )
+        )["expected"]
+        archive["archive_section"] = "## Open"
+        archive_errors = []
+        SEMANTIC_CASES.validate_archive_items("archive", archive, archive_errors)
+        self.assertIn(
+            "archive: archive_items archive_section must be ## Archive",
+            archive_errors,
+        )
+
+        privacy = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "privacy-kr-01.json").read_text(
+                encoding="utf-8"
+            )
+        )["expected"]
+        privacy["allowed_storage"] = []
+        privacy_errors = []
+        SEMANTIC_CASES.validate_refuse_secret_storage(
+            "privacy", privacy, privacy_errors
+        )
+        self.assertIn(
+            "privacy: refuse_secret_storage allowed_storage must be a stable non-secret pointer",
+            privacy_errors,
+        )
+
+    def test_skill_distinguishes_narrow_and_broad_delete_confirmation(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        lifecycle = (SKILL_DIR / "references" / "lifecycle.md").read_text(
+            encoding="utf-8"
+        )
+        normalized = " ".join((skill + " " + lifecycle).split())
+
+        self.assertIn("one named WL item authorizes it", normalized)
+        self.assertIn("Re-confirm broad requests, whole-file deletion", normalized)
+
+    def test_semantic_review_rejects_string_booleans_and_weak_sensitive_policy(self):
+        expected = {
+            "operation": "review_items",
+            "mutates_file": "false",
+            "must_not_modify_watchlist": True,
+            "should_suggest_archive": "true",
+            "requires_explicit_authorization": [],
+            "sensitive_data_policy": "report_without_echo_or_mutation",
+            "must_not": [],
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_review_items("review", expected, errors)
+
+        for message in [
+            "review: review_items must set mutates_file=false",
+            "review: should_suggest_archive must be a boolean",
+            "review: requires_explicit_authorization must be a boolean",
+            "review: sensitive-data review must_not must include echo_sensitive_value",
+            "review: sensitive-data review must_not must include redact_without_authority",
+        ]:
+            self.assertIn(message, errors)
+
+    def test_semantic_pinned_regression_contracts_reject_missing_or_inverted_discriminants(self):
+        mutations = {
+            "negative-now-01": ("should_create_watchlist_item", True),
+            "archive-suggest-policy-kr": ("should_suggest_archive", None),
+            "permission-kr-01": ("requires_explicit_authorization", False),
+            "list-review-sensitive-data-kr": ("sensitive_data_policy", None),
+            "past-time-kr-01": ("ambiguity", None),
+            "localized-schema-tokens-kr": ("schema_tokens", None),
+            "existing-root-private-scope-mismatch-kr": ("storage", None),
+        }
+
+        for case_id, (key, value) in mutations.items():
+            with self.subTest(case_id=case_id, key=key):
+                case = json.loads(
+                    (REPO_ROOT / "evals" / "cases" / f"{case_id}.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                case["expected"][key] = value
+                errors = []
+
+                SEMANTIC_CASES.validate_case(
+                    case,
+                    {
+                        case_id: {
+                            "id": case_id,
+                            "should_trigger": str(case["should_trigger_skill"]).lower(),
+                            "prompt": case["prompt"],
+                        }
+                    },
+                    {
+                        case_id: {
+                            "prompt": case["prompt"],
+                            "should_trigger_skill": str(case["should_trigger_skill"]).lower(),
+                        }
+                    },
+                    errors,
+                )
+
+                self.assertTrue(
+                    any("pinned regression contract" in error for error in errors),
+                    errors,
+                )
+
+    def test_semantic_no_trigger_case_requires_reason_and_false_creation_flag(self):
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "negative-now-01.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["expected"].pop("reason")
+        case["expected"]["should_create_watchlist_item"] = True
+        errors = []
+
+        SEMANTIC_CASES.validate_case(
+            case,
+            {
+                case["id"]: {
+                    "id": case["id"],
+                    "should_trigger": "false",
+                    "prompt": case["prompt"],
+                }
+            },
+            {
+                case["id"]: {
+                    "prompt": case["prompt"],
+                    "should_trigger_skill": "false",
+                }
+            },
+            errors,
+        )
+
+        self.assertIn("negative-now-01: missing expected key(s): reason", errors)
+        self.assertIn(
+            "negative-now-01: expected.should_create_watchlist_item must be false",
             errors,
         )
 

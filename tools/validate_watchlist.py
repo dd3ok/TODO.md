@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -35,12 +36,33 @@ KNOWN_TOP_LEVEL_FIELDS = set(SKELETON_FIELDS).union(
     {"mode", "archive_policy", "archive_after_days"}
 )
 SKELETON_SECTIONS = ("## Open", "## Done")
-HEADING_RE_COMPAT = re.compile(r"^### (WL-\d{8}-\d{3})\s+(?P<separator>—|-)\s+.+$")
+HEADING_RE_COMPAT = re.compile(
+    r"^### (?P<id>WL-(?P<date>\d{8})-(?P<sequence>\d{3}))"
+    r"\s+(?P<separator>—|-)\s+(?P<title>\S(?:.*\S)?)\s*$"
+)
+WATCHLIST_HEADING_CANDIDATE_RE = re.compile(
+    r"^[ \t]{0,3}#{1,6}[ \t]*(?i:wl)(?=[^A-Za-z]|$).*$",
+    flags=re.M,
+)
+ITEM_START_RE = re.compile(
+    r"(?=^###[ \t]+(?i:wl)(?=[^A-Za-z]|$))",
+    flags=re.M,
+)
+CORRECT_LEVEL_ITEM_START_RE = re.compile(
+    r"^###[ \t]+(?i:wl)(?=[^A-Za-z]|$)"
+)
+FENCE_OPEN_RE = re.compile(r"^[ \t]{0,3}(?P<fence>`{3,}|~{3,}).*$")
 TIMESTAMP_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:[0-5]\d)$"
 )
-FIELD_RE = re.compile(r"^- ([a-z_]+):[ \t]*(.*)$", flags=re.M)
-TOP_LEVEL_FIELD_RE = re.compile(r"^([a-z_]+):[ \t]*(.*)$", flags=re.M)
+FIELD_RE = re.compile(
+    r"^- (?P<field>[A-Za-z_][A-Za-z0-9_-]*):[ \t]*(?P<value>.*)$",
+    flags=re.M,
+)
+TOP_LEVEL_FIELD_RE = re.compile(
+    r"^(?P<field>[A-Za-z_][A-Za-z0-9_-]*):[ \t]*(?P<value>.*)$",
+    flags=re.M,
+)
 SENSITIVE_PATTERNS = {
     "PRIVATE_KEY": (r"-----BEGIN (?:RSA |EC |OPENSSH |)?PRIVATE KEY-----", "error"),
     "BEARER_TOKEN": (r"\bBearer\s+[A-Za-z0-9._~+/=-]{20,}", "error"),
@@ -118,16 +140,82 @@ def add_warning(
 
 
 def item_blocks(text: str) -> list[str]:
-    text = strip_html_comments(text)
+    text = structural_text(text)
     return [
         block
-        for block in re.split(r"(?=^### WL)", text, flags=re.M)
-        if block.startswith("### WL")
+        for block in ITEM_START_RE.split(text)
+        if CORRECT_LEVEL_ITEM_START_RE.match(block)
     ]
 
 
+def mask_non_newlines(value: str) -> str:
+    return re.sub(r"[^\r\n]", " ", value)
+
+
 def strip_html_comments(text: str) -> str:
-    return re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    return re.sub(
+        r"<!--(?:.*?-->|.*\Z)",
+        lambda match: mask_non_newlines(match.group(0)),
+        text,
+        flags=re.S,
+    )
+
+
+def strip_fenced_code_blocks(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    output: list[str] = []
+    fence_char: Optional[str] = None
+    fence_length = 0
+
+    for line in lines:
+        content = line.rstrip("\r\n")
+        if fence_char is None:
+            match = FENCE_OPEN_RE.match(content)
+            if match:
+                fence = match.group("fence")
+                fence_char = fence[0]
+                fence_length = len(fence)
+                output.append(mask_non_newlines(line))
+            else:
+                output.append(line)
+            continue
+
+        output.append(mask_non_newlines(line))
+        if re.fullmatch(
+            rf"[ \t]{{0,3}}{re.escape(fence_char)}{{{fence_length},}}[ \t]*",
+            content,
+        ):
+            fence_char = None
+            fence_length = 0
+
+    return "".join(output)
+
+
+def strip_indented_code_blocks(text: str) -> str:
+    return re.sub(
+        r"^(?: {4,}|\t).*?$",
+        lambda match: mask_non_newlines(match.group(0)),
+        text,
+        flags=re.M,
+    )
+
+
+def structural_text(text: str) -> str:
+    return strip_indented_code_blocks(
+        strip_fenced_code_blocks(strip_html_comments(text))
+    )
+
+
+def validate_heading_candidates(text: str, result: ValidationResult) -> None:
+    for match in WATCHLIST_HEADING_CANDIDATE_RE.finditer(text):
+        heading = match.group(0)
+        if CORRECT_LEVEL_ITEM_START_RE.match(heading):
+            continue
+        add_error(
+            result,
+            "MALFORMED_HEADING",
+            f"Malformed WATCHLIST item heading: {heading}",
+        )
 
 
 def heading_info(block: str, result: ValidationResult, options: ValidationOptions) -> Optional[str]:
@@ -137,7 +225,23 @@ def heading_info(block: str, result: ValidationResult, options: ValidationOption
         add_error(result, "MALFORMED_HEADING", f"Malformed WATCHLIST item heading: {heading}")
         return None
 
-    watch_id = match.group(1)
+    watch_id = match.group("id")
+    try:
+        datetime.strptime(match.group("date"), "%Y%m%d")
+    except ValueError:
+        add_error(
+            result,
+            "INVALID_ID_DATE",
+            f"Invalid calendar date in WATCHLIST ID: {watch_id}",
+            watch_id=watch_id,
+        )
+    if match.group("sequence") == "000":
+        add_error(
+            result,
+            "INVALID_ID_SEQUENCE",
+            f"WATCHLIST ID sequence must be 001-999: {watch_id}",
+            watch_id=watch_id,
+        )
     if match.group("separator") != "—":
         message = f"Use em dash separator in {watch_id}: {heading}"
         if options.strict_format:
@@ -156,10 +260,10 @@ def fields_for_block(
     fields: dict[str, str] = {}
     seen_order: list[str] = []
     for match in FIELD_RE.finditer(block):
-        field = match.group(1)
+        field = match.group("field")
         if field in fields:
             add_error(result, "DUPLICATE_FIELD", f"Duplicate field in {watch_id}: {field}", watch_id, field)
-        fields[field] = match.group(2).strip()
+        fields[field] = match.group("value").strip()
         seen_order.append(field)
 
     unknown_fields = sorted(set(fields) - REQUIRED_FIELDS)
@@ -204,7 +308,7 @@ def validate_timestamp(
 
 
 def validate_skeleton(text: str, result: ValidationResult, options: ValidationOptions) -> None:
-    text = strip_html_comments(text)
+    text = structural_text(text)
     preamble = re.split(r"^##\s+", text, maxsplit=1, flags=re.M)[0]
     for field in SKELETON_FIELDS:
         if not re.search(rf"^{field}:\s*\S+", preamble, flags=re.M):
@@ -215,9 +319,12 @@ def validate_skeleton(text: str, result: ValidationResult, options: ValidationOp
     required_sections = list(SKELETON_SECTIONS)
     if options.require_archive_section:
         required_sections.append("## Archive")
-    for section in required_sections:
-        if not re.search(rf"^{re.escape(section)}\s*$", text, flags=re.M):
+    for section in (*SKELETON_SECTIONS, "## Archive"):
+        count = len(re.findall(rf"^{re.escape(section)}\s*$", text, flags=re.M))
+        if section in required_sections and count == 0:
             add_error(result, "MISSING_SKELETON_SECTION", f"Missing WATCHLIST skeleton section: {section}")
+        if count > 1:
+            add_error(result, "DUPLICATE_SKELETON_SECTION", f"Duplicate WATCHLIST skeleton section: {section}")
 
 
 def top_level_fields(
@@ -225,11 +332,11 @@ def top_level_fields(
     result: ValidationResult,
     options: ValidationOptions,
 ) -> dict[str, str]:
-    text = strip_html_comments(text)
+    text = structural_text(text)
     preamble = re.split(r"^##\s+", text, maxsplit=1, flags=re.M)[0]
     fields: dict[str, str] = {}
     for match in TOP_LEVEL_FIELD_RE.finditer(preamble):
-        field = match.group(1)
+        field = match.group("field")
         if field in fields:
             add_error(
                 result,
@@ -243,7 +350,7 @@ def top_level_fields(
                 "UNKNOWN_TOP_LEVEL_FIELD",
                 f"Unknown top-level field: {field}",
             )
-        fields[field] = match.group(2).strip()
+        fields[field] = match.group("value").strip()
     return fields
 
 
@@ -263,6 +370,7 @@ def validate_top_level_fields(text: str, result: ValidationResult, options: Vali
     fields = top_level_fields(text, result, options)
     schema_version = fields.get("schema_version")
     automation = fields.get("automation")
+    mode = fields.get("mode")
     archive_policy = fields.get("archive_policy")
     archive_after_days = fields.get("archive_after_days")
 
@@ -278,6 +386,13 @@ def validate_top_level_fields(text: str, result: ValidationResult, options: Vali
             result,
             "INVALID_AUTOMATION",
             f"Invalid automation: {automation}. Use none.",
+        )
+
+    if mode is not None:
+        add_warning(
+            result,
+            "DEPRECATED_MODE_FIELD",
+            "Deprecated top-level field: mode has no effect; remove it.",
         )
 
     if archive_policy and archive_policy not in VALID_ARCHIVE_POLICIES:
@@ -355,6 +470,22 @@ def validate_status_rules(result: ValidationResult, watch_id: str, fields: dict[
 
     validate_timestamp(result, watch_id, "due_at", fields["due_at"], allow_unscheduled=True)
     validate_timestamp(result, watch_id, "created_at", fields["created_at"], allow_unscheduled=False)
+    if TIMESTAMP_RE.match(fields["created_at"]):
+        try:
+            created_at = datetime.fromisoformat(
+                fields["created_at"].replace("Z", "+00:00")
+            )
+        except ValueError:
+            pass
+        else:
+            if created_at.strftime("%Y%m%d") != watch_id[3:11]:
+                add_error(
+                    result,
+                    "ID_CREATED_DATE_MISMATCH",
+                    f"WATCHLIST ID date must match created_at local date in {watch_id}",
+                    watch_id,
+                    "created_at",
+                )
     if fields["last_checked_at"]:
         validate_timestamp(
             result,
@@ -405,7 +536,9 @@ def validate(text: str, path: str, options: ValidationOptions) -> ValidationResu
     validate_top_level_fields(text, result, options)
     scan_document_safety(result, text, options.strict_safety)
 
-    blocks = item_blocks(text)
+    structure = structural_text(text)
+    validate_heading_candidates(structure, result)
+    blocks = item_blocks(structure)
     result.items = len(blocks)
     ids: list[str] = []
     parsed: list[tuple[str, dict[str, str]]] = []
@@ -417,7 +550,9 @@ def validate(text: str, path: str, options: ValidationOptions) -> ValidationResu
         fields = fields_for_block(block, watch_id, result, options)
         parsed.append((watch_id, fields))
 
-    duplicate_ids = sorted({watch_id for watch_id in ids if ids.count(watch_id) > 1})
+    duplicate_ids = sorted(
+        watch_id for watch_id, count in Counter(ids).items() if count > 1
+    )
     if duplicate_ids:
         add_error(result, "DUPLICATE_IDS", f"Duplicate WATCHLIST IDs: {', '.join(duplicate_ids)}")
 
@@ -479,8 +614,16 @@ def main(argv: list[str]) -> int:
         result = ValidationResult(path=str(path))
         add_error(result, "WATCHLIST_FILE_NOT_FOUND", f"WATCHLIST file not found: {path}")
     else:
-        text = path.read_text(encoding="utf-8")
-        result = validate(text, str(path), options)
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except UnicodeError as exc:
+            result = ValidationResult(path=str(path))
+            add_error(result, "INVALID_UTF8", f"WATCHLIST file is not valid UTF-8: {exc}")
+        except OSError as exc:
+            result = ValidationResult(path=str(path))
+            add_error(result, "WATCHLIST_READ_ERROR", f"Could not read WATCHLIST file: {exc}")
+        else:
+            result = validate(text, str(path), options)
 
     if args.json_output:
         print(json.dumps(result_payload(result), ensure_ascii=False, indent=2))

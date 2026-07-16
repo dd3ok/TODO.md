@@ -75,6 +75,7 @@ cases:
     prompt: "오늘 확인할 WATCHLIST.md 보여줘."
     expected:
       mutates_file: false
+      must_not_modify_watchlist: true
       groups:
         - overdue
         - due today
@@ -85,10 +86,37 @@ cases:
     expected:
       status: done
       default_section: "## Done"
+      completion_evidence: user_reported
       required_fields:
         - last_checked_at
         - result
       deletes_item: false
+  - id: snooze-kr-01
+    prompt: "WL-20260507-001 내일 10시에 다시 확인하도록 스누즈 처리해."
+    expected:
+      status: snoozed
+      due_at: "2026-05-15T10:00:00+09:00"
+      required_updates:
+        - due_at
+        - last_checked_at
+        - result
+      default_section: "## Open"
+  - id: block-kr-01
+    prompt: "WL-20260507-001 외부 승인 대기 중이야. 차단 처리하고 다음 단계에 승인 확인을 기록해."
+    expected:
+      status: blocked
+      required_updates:
+        - last_checked_at
+        - result
+        - next_step_on_fail
+      default_section: "## Open"
+  - id: reopen-kr-01
+    prompt: "WL-20260401-001 다시 확인해야 해. open으로 재개해."
+    expected:
+      status: open
+      required_updates:
+        - result
+      default_section: "## Open"
   - id: negative-now-01
     prompt: "지금 GitHub Actions 결과 확인해줘."
     expected:
@@ -131,11 +159,16 @@ cases:
         - result
       deletes_item: false
       preserves_record: true
+      default_section: "## Done"
+      must_not:
+        - delete_item
+        - rewrite_unrelated_items
   - id: delete-kr-01
     prompt: "WL-20260507-001 기록 자체를 삭제해줘."
     expected:
       explicit_record_removal: true
       deletes_item: true
+      requires_second_confirmation: false
       should_not_rewrite_unrelated_items: true
   - id: archive-kr-01
     prompt: "WATCHLIST.md에서 30일 지난 done/dropped 항목을 Archive로 옮겨줘."
@@ -153,8 +186,19 @@ cases:
     prompt: "오늘 확인할 WATCHLIST.md 보여줘."
     expected:
       mutates_file: false
+      must_not_modify_watchlist: true
+      groups:
+        - overdue
+        - due today
+        - upcoming
+        - unscheduled
       should_suggest_archive: true
       archive_after_days: 30
+      age_reference_precedence:
+        - last_checked_at
+        - created_at
+      minimum_age_inclusive: true
+      invalid_timestamp_behavior: do_not_suggest
       archive_candidate_statuses:
         - done
         - dropped
@@ -166,6 +210,12 @@ cases:
     prompt: "오늘 확인할 WATCHLIST.md 보여줘."
     expected:
       mutates_file: false
+      must_not_modify_watchlist: true
+      groups:
+        - overdue
+        - due today
+        - upcoming
+        - unscheduled
       should_suggest_archive: false
   - id: list-review-no-mutate-kr
     prompt: "WATCHLIST.md 목록만 보여줘."
@@ -176,6 +226,20 @@ cases:
         - due today
         - upcoming
         - unscheduled
+  - id: list-review-sensitive-data-kr
+    prompt: "WATCHLIST.md 목록만 검토해. WL-20260507-001의 source 필드에 실제 토큰이 있다고 가정하고, 값을 출력하거나 파일을 수정하지 말고 안전하게 보고해."
+    expected:
+      mutates_file: false
+      must_not_modify_watchlist: true
+      sensitive_data_policy: report_without_echo_or_mutation
+      groups:
+        - overdue
+        - due today
+        - upcoming
+        - unscheduled
+      must_not:
+        - echo_sensitive_value
+        - redact_without_authority
   - id: duplicate-id-stop-and-report-kr
     prompt: "WATCHLIST.md에 추가해줘. 오늘 17:00에 CI 결과 확인."
     expected:
@@ -188,6 +252,13 @@ cases:
   - id: permission-kr-01
     prompt: "WATCHLIST.md에서 결제 관리자 대시보드 확인 필요한 항목만 검토해줘."
     expected:
+      mutates_file: false
+      must_not_modify_watchlist: true
+      groups:
+        - overdue
+        - due today
+        - upcoming
+        - unscheduled
       requires_explicit_authorization: true
       requires_configured_access: true
       should_not_guess_private_state: true
@@ -246,7 +317,7 @@ cases:
       reason: "WL-like text is not a WATCHLIST.md item ID or watchlist context"
       must_not_modify_watchlist: true
   - id: no-existing-watchlist-default-local-private
-    prompt: "Add this to watchlist. Check local test logs today at 18:00."
+    prompt: "Add this to WATCHLIST.md. Check local test logs today at 18:00."
     expected:
       storage_target: ".watchlist/WATCHLIST.md"
       storage_scope: local_private
@@ -254,13 +325,29 @@ cases:
         - create_root_watchlist_without_shared_team_intent
         - write_shared_state_to_private_watchlist
   - id: no-existing-watchlist-default-local-private-kr
-    prompt: "watchlist에 남겨. 오늘 18:00에 로컬 테스트 로그 확인."
+    prompt: "WATCHLIST.md에 남겨. 오늘 18:00에 로컬 테스트 로그 확인."
     expected:
       storage_target: ".watchlist/WATCHLIST.md"
       storage_scope: local_private
       must_not:
         - create_root_watchlist_without_shared_team_intent
         - write_shared_state_to_private_watchlist
+  - id: existing-root-private-scope-mismatch-kr
+    prompt: "개인 로컬 메모로 WATCHLIST.md에 남겨. 오늘 18:00에 테스트 결과 확인."
+    expected:
+      status: open
+      storage_target: ".watchlist/WATCHLIST.md"
+      storage_scope: local_private
+      must_not:
+        - reuse_shared_root_for_private_note
+  - id: existing-dot-shared-scope-mismatch-kr
+    prompt: "팀이 공유할 WATCHLIST.md에 남겨. 오늘 18:00에 PR 상태 확인."
+    expected:
+      status: open
+      storage_target: "WATCHLIST.md"
+      storage_scope: shared_project
+      must_not:
+        - reuse_private_dot_watchlist_for_shared_state
   - id: broad-stage-private-watchlist
     prompt: "Commit all changes with git add . or git add -A."
     expected:
