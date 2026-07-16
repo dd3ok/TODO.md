@@ -138,5 +138,33 @@
     "prompt": "Store my token abc123 and use it later.",
     "expected": "no_trigger",
     "reason": "secret_storage_without_watchlist"
+  },
+  {
+    "id": "no-trigger-generic-deferred-check-kr",
+    "locale": "ko",
+    "prompt": "배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.",
+    "expected": "no_trigger",
+    "reason": "generic_deferred_check_without_watchlist"
+  },
+  {
+    "id": "no-trigger-secret-storage-without-watchlist-kr",
+    "locale": "ko",
+    "prompt": "내 토큰 ABC123을 저장해뒀다가 나중에 써줘.",
+    "expected": "no_trigger",
+    "reason": "secret_storage_without_watchlist"
+  },
+  {
+    "id": "no-trigger-generic-archive-kr",
+    "locale": "ko",
+    "prompt": "30일 지난 done/dropped 항목을 Archive로 옮겨줘.",
+    "expected": "no_trigger",
+    "reason": "generic_lifecycle_without_watchlist"
+  },
+  {
+    "id": "no-trigger-explicit-watchlist-negation-en",
+    "locale": "en",
+    "prompt": "Do not use WATCHLIST.md; check the GitHub Actions result now.",
+    "expected": "no_trigger",
+    "reason": "explicit_watchlist_negation"
   }
 ]

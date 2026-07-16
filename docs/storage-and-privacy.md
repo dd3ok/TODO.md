@@ -41,7 +41,9 @@ git rm --cached .watchlist/WATCHLIST.md
 
 Do not add a full CLI or MCP server for the MVP flow. The installable skill bundle is intentionally Python-free; agents edit Markdown directly using the documented contract, and source-repository maintainers run `tools/validate_watchlist.py` or `evals/check_watchlist.py` for deterministic checks.
 
-AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes should use the same skill directory when possible. Runtime smoke status is tracked separately in `docs/runtime-smoke.md`.
+Gemini CLI, Kilo, and OpenClaw document `.agents/skills` discovery. Hermes uses
+`~/.hermes/skills` or its own installer. These path claims are not runtime smoke
+results; status is tracked separately in `docs/runtime-smoke.md`.
 
 ## Archive Policy
 

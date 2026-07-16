@@ -8,12 +8,16 @@ The installable skill bundle is intentionally Python-free. It should contain onl
 
 ```text
 watchlist-md/SKILL.md
+watchlist-md/LICENSE.txt
 watchlist-md/agents/openai.yaml
 watchlist-md/assets/WATCHLIST.template.md
 watchlist-md/references/format.md
 watchlist-md/references/lifecycle.md
 watchlist-md/references/safety.md
 ```
+
+`evals/check_skill_package.py` treats this as an exact file allowlist. Update the
+checker and this list together before adding any runtime file.
 
 Repository-only files must stay outside `.agents/skills/watchlist-md/`: `tools/`, `evals/`, `.github/`, `docs/`, examples, smoke notes, release notes, transcripts, screenshots, and raw logs.
 
@@ -41,7 +45,7 @@ git diff --name-only -- .agents/skills/watchlist-md
 
 If the PR targets a branch other than `main`, replace `origin/main` with the actual base ref.
 
-## OpenAI Skills Zip
+## Standalone Skill Zip
 
 When uploading a skill bundle as a zip, package one top-level skill directory:
 
@@ -50,4 +54,7 @@ cd .agents/skills
 zip -r watchlist-md-skill.zip watchlist-md
 ```
 
-The archive should contain `watchlist-md/SKILL.md` at its top-level folder. Repository-level `tools/validate_watchlist.py` and `evals/` are source-repository maintainer checks only. Do not package runtime `scripts/`, `docs/`, `evals/`, screenshots, transcripts, or raw runtime logs.
+The archive should contain `watchlist-md/SKILL.md` and `watchlist-md/LICENSE.txt`
+at its top-level folder. Repository-level `tools/validate_watchlist.py` and
+`evals/` are source-repository maintainer checks only. Do not package runtime
+`scripts/`, `docs/`, `evals/`, screenshots, transcripts, or raw runtime logs.

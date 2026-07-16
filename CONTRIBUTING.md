@@ -2,15 +2,19 @@
 
 Keep changes narrow and update the files that define the same behavior.
 
-When changing WATCHLIST lifecycle behavior, update:
+When changing WATCHLIST behavior or runtime packaging, update the applicable sources:
 
 - `.agents/skills/watchlist-md/SKILL.md`
+- `.agents/skills/watchlist-md/LICENSE.txt` when repository licensing changes
 - `.agents/skills/watchlist-md/agents/openai.yaml` if trigger or boundary text changes
 - `README.md`
 - `README.ko.md`
 - `.agents/skills/watchlist-md/assets/WATCHLIST.template.md` if the file format changes
+- `.agents/skills/watchlist-md/references/format.md` or `lifecycle.md` when its contract changes
+- `examples/WATCHLIST.example.md`, which must mirror the canonical runtime template
 - `evals/prompts.csv`
 - `evals/self_checks.yaml`
+- `evals/cases/*.json` and `evals/trigger_cases.json`
 - `evals/test_check_watchlist.py`
 - `CHANGELOG.md`
 
@@ -20,7 +24,7 @@ prerequisites for the py-free skill bundle.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_watchlist.py .watchlist/WATCHLIST.md --strict-format --strict-safety --require-archive-section
+python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
 python3 evals/check_release_metadata.py
 python3 evals/check_policy_markers.py

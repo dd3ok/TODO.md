@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import warnings
 import csv
 import importlib.util
 import json
@@ -192,6 +193,16 @@ class CheckWatchlistTests(unittest.TestCase):
 
         self.assert_check_fails(text, "Invalid owner")
 
+    def test_invalid_schema_version_fails(self):
+        text = VALID_WATCHLIST.replace("schema_version: 1", "schema_version: banana")
+
+        self.assert_check_fails(text, "INVALID_SCHEMA_VERSION")
+
+    def test_invalid_automation_fails(self):
+        text = VALID_WATCHLIST.replace("automation: none", "automation: cron")
+
+        self.assert_check_fails(text, "INVALID_AUTOMATION")
+
     def test_owner_agent_is_not_supported(self):
         text = VALID_WATCHLIST.replace("- owner: assistant_on_review", "- owner: agent")
 
@@ -211,6 +222,20 @@ class CheckWatchlistTests(unittest.TestCase):
         )
 
         self.assert_check_fails(text, "Invalid due_at")
+
+    def test_timestamp_offset_minute_overflow_fails(self):
+        text = VALID_WATCHLIST.replace(
+            "- due_at: 2026-05-14T17:00:00+09:00",
+            "- due_at: 2026-05-14T17:00:00+09:60",
+        )
+
+        self.assert_check_fails(text, "Invalid due_at")
+
+    def test_open_item_requires_semantic_field_values(self):
+        for field in ("source", "trigger", "action", "done_when"):
+            with self.subTest(field=field):
+                text = re.sub(rf"^- {field}:.*$", f"- {field}:", VALID_WATCHLIST, flags=re.M)
+                self.assert_check_fails(text, f"open item requires {field}")
 
     def test_duplicate_field_fails(self):
         text = VALID_WATCHLIST.replace(
@@ -493,6 +518,13 @@ timezone: Asia/Seoul
 
         self.assert_check_fails(text, "Missing WATCHLIST skeleton section: ## Done")
 
+    def test_skeleton_fields_must_be_in_preamble(self):
+        text = VALID_WATCHLIST.replace("schema_version: 1\n", "").replace(
+            "## Open\n", "## Open\n\nschema_version: 1\n", 1
+        )
+
+        self.assert_check_fails(text, "Missing WATCHLIST skeleton field: schema_version")
+
     def test_missing_file_fails_cleanly(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = self.run_check_path(Path(tmpdir) / "missing.md")
@@ -575,6 +607,7 @@ timezone: Asia/Seoul
     def test_installable_skill_bundle_contains_runtime_resources(self):
         expected_files = [
             SKILL_DIR / "SKILL.md",
+            SKILL_DIR / "LICENSE.txt",
             SKILL_DIR / "assets" / "WATCHLIST.template.md",
             SKILL_DIR / "references" / "format.md",
             SKILL_DIR / "references" / "lifecycle.md",
@@ -748,26 +781,30 @@ timezone: Asia/Seoul
         description = parse_skill_frontmatter_description(text)
 
         self.assertIsNotNone(description)
-        self.assertLessEqual(len(description), 230)
+        self.assertLessEqual(len(description), 160)
         for trigger in [
             "WATCHLIST.md",
             "WL-YYYYMMDD-NNN",
-            "CI",
-            "deploy",
-            "job",
-            "sync",
-            "order",
-            "PR",
-            "ticket",
-            "email",
+            "deferred checks",
             "후속 체크",
+            "not generic reminders",
+            "unscoped lifecycle requests",
         ]:
             self.assertIn(trigger, description)
-        self.assertIn("Use when", description)
-        self.assertIn("updating", description)
-        self.assertIn("not generic calendars/wakeups/polling", description)
-        self.assertIn("lifecycle words", description)
-        self.assertIn("WATCHLIST-scoped", description)
+        self.assertIn("Record, review, or update", description)
+        self.assertIn("wakeups, polling", description)
+
+    def test_openai_default_prompt_is_short_explicit_example(self):
+        text = (SKILL_DIR / "agents" / "openai.yaml").read_text(encoding="utf-8")
+        default_line = next(
+            line.strip() for line in text.splitlines() if "default_prompt:" in line
+        )
+
+        self.assertLessEqual(len(default_line), 180)
+        self.assertIn("$watchlist-md", default_line)
+        self.assertIn("record a deferred CI check in WATCHLIST.md", default_line)
+        self.assertNotIn("Generic lifecycle words", text)
+        self.assertEqual(text.count("default_prompt:"), 1)
 
     def test_skill_runtime_documents_generated_data_boundaries(self):
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -796,6 +833,9 @@ timezone: Asia/Seoul
         self.assertIn("Recommended when known", validation)
         self.assertIn("Normally blank until checked", validation)
         self.assertIn("`--strict-safety` is intentionally conservative", validation)
+        self.assertIn("Default mode reports field-order drift as", validation)
+        self.assertIn("does not run an LLM", validation)
+        self.assertIn("not injected into an agent", validation)
         self.assertIn("### WL-20260507-001 — Check error logs after deployment", validation)
         self.assertNotIn("### WL-20260507-001 - Check error logs after deployment", validation)
 
@@ -820,7 +860,7 @@ timezone: Asia/Seoul
         self.assertIn("docs/storage-and-privacy.md", english)
         self.assertIn("docs/validation.md", english)
         self.assertIn("docs/maintainers/release.md", english)
-        self.assertIn("until runtime-smoked", normalized_english)
+        self.assertIn("format/path compatibility does not count as a runtime smoke pass", normalized_english.lower())
         self.assertIn("docs/runtime-smoke.md", english)
         self.assertIn("not the repository root", normalized_english)
 
@@ -837,7 +877,7 @@ timezone: Asia/Seoul
         self.assertIn("docs/storage-and-privacy.md", korean)
         self.assertIn("docs/validation.md", korean)
         self.assertIn("docs/maintainers/release.md", korean)
-        self.assertIn("runtime smoke 전까지 AgentSkills 호환/manual 지원", normalized_korean)
+        self.assertIn("format/path 호환성은 runtime smoke pass가 아닙니다", normalized_korean)
         self.assertIn("docs/runtime-smoke.md", korean)
         self.assertIn("리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리", normalized_korean)
 
@@ -872,7 +912,31 @@ timezone: Asia/Seoul
         self.assertIn("Do not add a full CLI or MCP server for the MVP flow", storage)
         self.assertIn("The installable skill bundle is intentionally Python-free", storage)
         self.assertIn("source-repository maintainers run `tools/validate_watchlist.py`", storage)
-        self.assertIn("AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes", storage)
+        self.assertIn("Gemini CLI, Kilo, and OpenClaw document `.agents/skills` discovery", storage)
+        self.assertIn("Hermes uses", storage)
+
+    def test_runtime_references_define_enum_and_section_semantics(self):
+        format_text = (SKILL_DIR / "references" / "format.md").read_text(
+            encoding="utf-8"
+        )
+        lifecycle = (SKILL_DIR / "references" / "lifecycle.md").read_text(
+            encoding="utf-8"
+        )
+
+        for marker in [
+            "`P0`: critical or urgent",
+            "`P2`: normal",
+            "`assistant_on_review`: the assistant acts when the item is explicitly reviewed",
+            "Owner describes who acts during an explicit WATCHLIST review",
+        ]:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, format_text)
+        self.assertIn("Keep `open`, `snoozed`, and `blocked` items under `## Open`", lifecycle)
+        self.assertIn("Move `done` and `dropped` items under `## Done`", lifecycle)
+        self.assertIn("Move a reopened `done` or `dropped` item back under `## Open`", lifecycle)
+        self.assertIn("plus the target status requirements in `format.md`", lifecycle)
+        self.assertIn("non-empty IANA time-zone name", format_text)
+        self.assertIn("checks this field for presence only", format_text)
 
     def test_install_and_release_docs_openai_zip_packaging_uses_one_top_level_skill_folder(self):
         install = (REPO_ROOT / "docs" / "install.md").read_text(encoding="utf-8")
@@ -886,6 +950,19 @@ timezone: Asia/Seoul
         )
         self.assertIn("rm -rf ~/.claude/skills/watchlist-md", install)
         self.assertIn("mkdir -p ~/.claude/skills", install)
+        self.assertIn("Codex detects newly installed skills automatically", install)
+        self.assertIn("$watchlist-md Add this to WATCHLIST.md", install)
+        self.assertIn("## Vendor Paths And Guides", install)
+        for url in [
+            "https://learn.chatgpt.com/docs/build-skills",
+            "https://code.claude.com/docs/en/skills",
+            "https://geminicli.com/docs/cli/using-agent-skills/",
+            "https://kilo.ai/docs/customize/skills",
+            "https://docs.openclaw.ai/skills",
+            "https://hermes-agent.nousresearch.com/docs/guides/work-with-skills",
+        ]:
+            with self.subTest(url=url):
+                self.assertIn(url, install)
         self.assertIn(
             "git diff --name-only origin/main...HEAD -- .agents/skills/watchlist-md",
             release,
@@ -903,6 +980,18 @@ timezone: Asia/Seoul
                 self.assertIn("tools/validate_watchlist.py", text)
                 self.assertNotIn("watchlist-md/scripts/validate_watchlist.py", text)
                 self.assertNotIn("zip -r watchlist-md-skill.zip SKILL.md", text)
+
+    def test_contributing_validation_command_works_from_clean_clone(self):
+        text = (REPO_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "python3 evals/check_watchlist.py examples/WATCHLIST.example.md",
+            text,
+        )
+        self.assertNotIn(
+            "python3 evals/check_watchlist.py .watchlist/WATCHLIST.md",
+            text,
+        )
 
     def test_skill_package_shape_checker_passes(self):
         result = self.run_script(PACKAGE_SCRIPT)
@@ -943,6 +1032,59 @@ timezone: Asia/Seoul
         self.assertIn(
             "package contains forbidden runtime code or bytecode: watchlist-md/references/helper.pyw",
             errors,
+        )
+
+    def test_skill_package_checker_rejects_unexpected_runtime_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "unexpected-package.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr("watchlist-md/references/transcript.md", "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "unexpected package file(s): watchlist-md/references/transcript.md",
+            errors,
+        )
+
+    def test_skill_package_checker_accepts_standard_directory_entries(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "directory-entries.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in [
+                    "watchlist-md/",
+                    "watchlist-md/agents/",
+                    "watchlist-md/assets/",
+                    "watchlist-md/references/",
+                ]:
+                    archive.writestr(name, "")
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertEqual(errors, [])
+
+    def test_skill_package_checker_rejects_duplicate_file_entries(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "duplicate-entry.zip"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        archive.writestr(name, "")
+                    archive.writestr("watchlist-md/SKILL.md", "duplicate")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn("duplicate package file(s): watchlist-md/SKILL.md", errors)
+
+    def test_bundled_license_matches_repository_license(self):
+        self.assertEqual(
+            (SKILL_DIR / "LICENSE.txt").read_text(encoding="utf-8"),
+            (REPO_ROOT / "LICENSE").read_text(encoding="utf-8"),
         )
 
     def test_skill_package_checker_rejects_case_variant_forbidden_artifacts(self):
@@ -1010,7 +1152,9 @@ timezone: Asia/Seoul
 
         reasons = {case["reason"] for case in cases}
         for reason in [
+            "explicit_watchlist_negation",
             "explicit_watchlist_add",
+            "generic_deferred_check_without_watchlist",
             "wl_item_lifecycle_update",
             "watchlist_list_review",
             "generic_reminder_without_watchlist",
@@ -1035,6 +1179,43 @@ timezone: Asia/Seoul
                 self.assertFalse(forbidden_fields.intersection(case))
                 self.assertLessEqual(len(case["prompt"]), 180)
 
+    def test_trigger_eval_keeps_scoped_positive_and_unscoped_negative_pairs(self):
+        cases = json.loads(TRIGGER_CASES.read_text(encoding="utf-8"))
+        prompts = {(case["prompt"], case["expected"]) for case in cases}
+
+        for prompt in [
+            "배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.",
+            "내 토큰 ABC123을 저장해뒀다가 나중에 써줘.",
+            "30일 지난 done/dropped 항목을 Archive로 옮겨줘.",
+        ]:
+            with self.subTest(prompt=prompt):
+                self.assertIn((prompt, "no_trigger"), prompts)
+
+        self.assertIn(
+            (
+                "Do not use WATCHLIST.md; check the GitHub Actions result now.",
+                "no_trigger",
+            ),
+            prompts,
+        )
+
+        semantic_prompts = {
+            json.loads(path.read_text(encoding="utf-8"))["prompt"]
+            for path in (REPO_ROOT / "evals" / "cases").glob("*.json")
+        }
+        self.assertIn(
+            "WATCHLIST.md에 남겨줘. 배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.",
+            semantic_prompts,
+        )
+        self.assertIn(
+            "내 토큰 ABC123을 WATCHLIST.md에 저장해뒀다가 나중에 써줘.",
+            semantic_prompts,
+        )
+        self.assertIn(
+            "WATCHLIST.md에서 30일 지난 done/dropped 항목을 Archive로 옮겨줘.",
+            semantic_prompts,
+        )
+
     def test_starter_templates_label_commented_item_as_example_only(self):
         paths = [
             SKILL_DIR / "assets" / "WATCHLIST.template.md",
@@ -1057,6 +1238,18 @@ timezone: Asia/Seoul
                 result = self.run_check_path(path)
 
                 self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_source_example_matches_canonical_runtime_template(self):
+        template = (SKILL_DIR / "assets" / "WATCHLIST.template.md").read_text(
+            encoding="utf-8"
+        )
+        example = (REPO_ROOT / "examples" / "WATCHLIST.example.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(example, template)
+        self.assertIn("- owner: assistant_on_review", template)
+        self.assertNotIn("owner: user|assistant_on_review|both|external", template)
 
     def test_generated_repo_watchlist_is_gitignored_by_default(self):
         gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
@@ -1307,8 +1500,130 @@ timezone: Asia/Seoul
         result = self.run_script(SEMANTIC_SCRIPT)
 
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        self.assertIn("Semantic case check passed", result.stdout)
+        self.assertIn("Evaluation contract lint passed", result.stdout)
         self.assertIn("trigger case(s)", result.stdout)
+
+    def test_semantic_prompt_rows_reject_duplicate_ids_and_invalid_trigger_values(self):
+        errors = []
+        rows = [
+            {"id": "same", "should_trigger": "maybe", "prompt": "one", "expected": "one"},
+            {"id": "same", "should_trigger": "true", "prompt": "two", "expected": "two"},
+        ]
+
+        SEMANTIC_CASES.rows_to_prompts(rows, errors)
+
+        self.assertIn("prompts.csv:2: should_trigger must be true or false: maybe", errors)
+        self.assertIn("prompts.csv:3: duplicate id same", errors)
+
+    def test_semantic_prompt_loader_reports_missing_header_without_key_error(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "prompts.csv"
+            path.write_text("id,prompt,expected\nsample,hello,summary\n", encoding="utf-8")
+            original = SEMANTIC_CASES.PROMPTS_CSV
+            errors = []
+            try:
+                SEMANTIC_CASES.PROMPTS_CSV = path
+                prompts = SEMANTIC_CASES.load_prompts(errors)
+            finally:
+                SEMANTIC_CASES.PROMPTS_CSV = original
+
+        self.assertIn("prompts.csv: missing required header(s): should_trigger", errors)
+        self.assertIn("prompts.csv:2: should_trigger must be true or false: ", errors)
+        self.assertIn("sample", prompts)
+
+    def test_semantic_prompt_loader_rejects_duplicate_and_unsupported_headers(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "prompts.csv"
+            path.write_text(
+                "id,id,should_trigger,prompt,expected,extra\n"
+                "sample,sample,false,hello,summary,value\n",
+                encoding="utf-8",
+            )
+            original = SEMANTIC_CASES.PROMPTS_CSV
+            errors = []
+            try:
+                SEMANTIC_CASES.PROMPTS_CSV = path
+                SEMANTIC_CASES.load_prompts(errors)
+            finally:
+                SEMANTIC_CASES.PROMPTS_CSV = original
+
+        self.assertIn("prompts.csv: duplicate header(s): id", errors)
+        self.assertIn("prompts.csv: unsupported header(s): extra", errors)
+
+    def test_semantic_self_check_parser_rejects_duplicate_ids(self):
+        text = """cases:
+  - id: duplicate
+    prompt: 'WATCHLIST.md first'
+  - id: duplicate
+    prompt: 'WATCHLIST.md second'
+"""
+        errors = []
+
+        SEMANTIC_CASES.parse_self_checks(text, errors)
+
+        self.assertIn("self_checks.yaml: duplicate id duplicate", errors)
+
+    def test_semantic_self_check_subset_rejects_trailing_root_garbage(self):
+        text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(
+            encoding="utf-8"
+        ) + "\nbroken: [\n"
+        errors = []
+
+        SEMANTIC_CASES.validate_self_check_yaml_subset(text, errors)
+
+        self.assertIn("unsupported root key broken", "\n".join(errors))
+        self.assertIn("inline collections are not supported", "\n".join(errors))
+
+    def test_semantic_self_check_subset_rejects_children_under_scalar(self):
+        text = (REPO_ROOT / "evals" / "self_checks.yaml").read_text(
+            encoding="utf-8"
+        ).replace(
+            "\nforbidden_response_substrings:",
+            "\n  - orphan-under-scalar\nforbidden_response_substrings:",
+            1,
+        )
+        errors = []
+
+        SEMANTIC_CASES.validate_self_check_yaml_subset(text, errors)
+
+        self.assertIn(
+            "scalar value cannot contain child entries",
+            "\n".join(errors),
+        )
+
+    def test_semantic_self_check_parser_reads_trigger_expectation(self):
+        text = """cases:
+  - id: sample
+    prompt: 'Delete README.md'
+    expected:
+      should_trigger_skill: maybe
+"""
+
+        parsed = SEMANTIC_CASES.parse_self_checks(text)
+
+        self.assertEqual(parsed["sample"]["should_trigger_skill"], "maybe")
+
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "generic-delete-file-en.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["id"] = "sample"
+        prompts = {
+            "sample": {
+                "id": "sample",
+                "should_trigger": "false",
+                "prompt": case["prompt"],
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(case, prompts, parsed, errors)
+
+        self.assertIn(
+            "sample: self_checks.yaml expected.should_trigger_skill must be true or false",
+            errors,
+        )
 
     def test_semantic_self_check_parser_supports_single_quoted_prompts(self):
         text = """cases:
@@ -1344,6 +1659,79 @@ timezone: Asia/Seoul
         SEMANTIC_CASES.validate_case(case, prompts, {"sample-case": {"prompt": None}}, errors)
 
         self.assertIn("sample-case: prompt could not be parsed from self_checks.yaml", errors)
+
+    def test_semantic_positive_case_requires_explicit_watchlist_context(self):
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "privacy-kr-01.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["prompt"] = "내 토큰 ABC123을 저장해뒀다가 나중에 써줘."
+        prompts = {
+            case["id"]: {
+                "id": case["id"],
+                "should_trigger": "true",
+                "prompt": case["prompt"],
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(
+            case,
+            prompts,
+            {case["id"]: {"prompt": case["prompt"]}},
+            errors,
+        )
+
+        self.assertIn(
+            "privacy-kr-01: should_trigger_skill=true requires explicit WATCHLIST or valid WL item context",
+            errors,
+        )
+
+    def test_semantic_false_case_allows_explicit_watchlist_negation(self):
+        case = json.loads(
+            (REPO_ROOT / "evals" / "cases" / "check-now-en.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case["prompt"] = "Do not use WATCHLIST.md; check the GitHub Actions result now."
+        prompts = {
+            case["id"]: {
+                "id": case["id"],
+                "should_trigger": "false",
+                "prompt": case["prompt"],
+            }
+        }
+        errors = []
+
+        SEMANTIC_CASES.validate_case(
+            case,
+            prompts,
+            {
+                case["id"]: {
+                    "prompt": case["prompt"],
+                    "should_trigger_skill": "false",
+                }
+            },
+            errors,
+        )
+
+        self.assertEqual(errors, [])
+
+    def test_trigger_case_no_trigger_reason_rejects_explicit_watchlist_context(self):
+        cases = json.loads(TRIGGER_CASES.read_text(encoding="utf-8"))
+        target = next(
+            case for case in cases if case["id"] == "no-trigger-generic-delete-en"
+        )
+        target["prompt"] = "Delete WATCHLIST.md."
+        errors = []
+
+        SEMANTIC_CASES.validate_trigger_case_list(cases, errors)
+
+        self.assertIn(
+            "no-trigger-generic-delete-en: reason generic_delete_without_watchlist must not use explicit WATCHLIST context",
+            errors,
+        )
 
     def test_semantic_review_archive_suggestion_contract_requires_no_mutation(self):
         errors = []

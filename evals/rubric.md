@@ -1,8 +1,11 @@
 # WATCHLIST.md Skill Eval Rubric
 
 Use `prompts.csv` as a small regression set for manual or automated agent runs.
-Use `cases/*.json` for deterministic semantic contracts that define expected
-trigger and operation behavior without running an LLM or agent.
+Use `cases/*.json` as the canonical deterministic contracts. The
+`check_semantic_cases.py` linter checks the declared corpus without running an
+LLM or agent; its success is not an agent-behavior result.
+An explicit WATCHLIST mention is not positive intent when the prompt rejects
+using WATCHLIST; record that routing exception with a named trigger reason.
 
 Score each run on these checks:
 

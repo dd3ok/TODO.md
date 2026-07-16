@@ -1,6 +1,6 @@
 {
   "id": "add-kr-02",
-  "prompt": "배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.",
+  "prompt": "WATCHLIST.md에 남겨줘. 배포가 방금 시작됐어. 30분 뒤에 에러 로그 확인해야 해.",
   "locale": "ko",
   "fixed_now": "2026-05-14T16:30:00+09:00",
   "fixture": "empty.watchlist.md",

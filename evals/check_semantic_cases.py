@@ -6,6 +6,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -65,7 +66,9 @@ SUPPORTED_CATEGORIES = {
 }
 SUPPORTED_TRIGGER_REASONS = {
     "ambiguous_watchlist_target",
+    "explicit_watchlist_negation",
     "explicit_watchlist_add",
+    "generic_deferred_check_without_watchlist",
     "generic_delete_without_watchlist",
     "generic_lifecycle_without_watchlist",
     "generic_now_check_without_watchlist",
@@ -80,7 +83,9 @@ SUPPORTED_TRIGGER_REASONS = {
     "wl_item_lifecycle_update",
 }
 REQUIRED_TRIGGER_REASONS = {
+    "explicit_watchlist_negation",
     "explicit_watchlist_add",
+    "generic_deferred_check_without_watchlist",
     "wl_item_lifecycle_update",
     "watchlist_list_review",
     "generic_reminder_without_watchlist",
@@ -89,9 +94,12 @@ REQUIRED_TRIGGER_REASONS = {
     "non_watchlist_wl_text",
 }
 TRIGGER_CASE_KEYS = {"id", "locale", "prompt", "expected", "reason"}
+SELF_CHECK_ROOT_KEYS = {"fixed_now", "forbidden_response_substrings", "cases"}
 TRIGGER_REASON_EXPECTED = {
     "ambiguous_watchlist_target": "trigger",
+    "explicit_watchlist_negation": "no_trigger",
     "explicit_watchlist_add": "trigger",
+    "generic_deferred_check_without_watchlist": "no_trigger",
     "generic_delete_without_watchlist": "no_trigger",
     "generic_lifecycle_without_watchlist": "no_trigger",
     "generic_now_check_without_watchlist": "no_trigger",
@@ -105,6 +113,20 @@ TRIGGER_REASON_EXPECTED = {
     "watchlist_scoped_pending_result": "trigger",
     "wl_item_lifecycle_update": "trigger",
 }
+EXPLICIT_WATCHLIST_CONTEXT_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])(?:watchlist(?:\.md)?|WL-\d{8}-\d{3})(?![A-Za-z0-9_-])",
+    re.I,
+)
+NO_EXPLICIT_CONTEXT_REASONS = {
+    "generic_deferred_check_without_watchlist",
+    "generic_delete_without_watchlist",
+    "generic_lifecycle_without_watchlist",
+    "generic_now_check_without_watchlist",
+    "generic_reminder_without_watchlist",
+    "non_watchlist_wl_text",
+    "scheduler_without_watchlist",
+    "secret_storage_without_watchlist",
+}
 
 
 def fail(message: str) -> int:
@@ -112,9 +134,55 @@ def fail(message: str) -> int:
     return 1
 
 
-def load_prompts() -> dict[str, dict[str, str]]:
+def rows_to_prompts(
+    rows: list[dict[str, str]], errors: list[str]
+) -> dict[str, dict[str, str]]:
+    prompts: dict[str, dict[str, str]] = {}
+    for index, row in enumerate(rows, start=2):
+        case_id = (row.get("id") or "").strip()
+        if not case_id:
+            errors.append(f"prompts.csv:{index}: id must be non-empty")
+            continue
+        if case_id in prompts:
+            errors.append(f"prompts.csv:{index}: duplicate id {case_id}")
+            continue
+        should_trigger = (row.get("should_trigger") or "").strip().lower()
+        if should_trigger not in {"true", "false"}:
+            errors.append(
+                f"prompts.csv:{index}: should_trigger must be true or false: {should_trigger}"
+            )
+        if not (row.get("prompt") or "").strip():
+            errors.append(f"prompts.csv:{index}: prompt must be non-empty")
+        if not (row.get("expected") or "").strip():
+            errors.append(f"prompts.csv:{index}: expected summary must be non-empty")
+        prompts[case_id] = row
+    return prompts
+
+
+def load_prompts(errors: list[str]) -> dict[str, dict[str, str]]:
     with PROMPTS_CSV.open(encoding="utf-8", newline="") as fh:
-        return {row["id"]: row for row in csv.DictReader(fh)}
+        reader = csv.DictReader(fh)
+        required_headers = {"id", "should_trigger", "prompt", "expected"}
+        headers = reader.fieldnames or []
+        header_counts = Counter(headers)
+        duplicate_headers = sorted(
+            header for header, count in header_counts.items() if count > 1
+        )
+        if duplicate_headers:
+            errors.append(
+                "prompts.csv: duplicate header(s): " + ", ".join(duplicate_headers)
+            )
+        unexpected_headers = sorted(set(headers) - required_headers)
+        if unexpected_headers:
+            errors.append(
+                "prompts.csv: unsupported header(s): " + ", ".join(unexpected_headers)
+            )
+        missing_headers = sorted(required_headers - set(headers))
+        if missing_headers:
+            errors.append(
+                "prompts.csv: missing required header(s): " + ", ".join(missing_headers)
+            )
+        return rows_to_prompts(list(reader), errors)
 
 
 def parse_yaml_scalar(value: str) -> Optional[str]:
@@ -129,7 +197,129 @@ def parse_yaml_scalar(value: str) -> Optional[str]:
     return value
 
 
-def parse_self_checks(text: str) -> dict[str, dict[str, Optional[str]]]:
+def validate_self_check_yaml_subset(text: str, errors: list[str]) -> None:
+    """Validate the dependency-free YAML subset used by self_checks.yaml."""
+    root_keys: list[str] = []
+    containers: dict[int, str] = {0: "mapping"}
+    previous_indent: Optional[int] = None
+    previous_child_container: Optional[str] = None
+
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
+            continue
+        if "\t" in line:
+            errors.append(f"self_checks.yaml:{line_number}: tabs are not supported")
+            continue
+
+        indent = len(line) - len(line.lstrip(" "))
+        if indent % 2:
+            errors.append(
+                f"self_checks.yaml:{line_number}: indentation must use two-space steps"
+            )
+
+        content = line.strip()
+        mapping_match = re.match(
+            r"^(?:- )?(?P<key>[A-Za-z_][A-Za-z0-9_]*):(?:\s*(?P<value>.*))$",
+            content,
+        )
+        is_sequence_item = content.startswith("- ")
+        item_container = "sequence" if is_sequence_item else "mapping"
+
+        if previous_indent is None:
+            if indent != 0:
+                errors.append(
+                    f"self_checks.yaml:{line_number}: document must start at root indentation"
+                )
+        elif indent > previous_indent:
+            if indent != previous_indent + 2:
+                errors.append(
+                    f"self_checks.yaml:{line_number}: indentation jumps more than one level"
+                )
+            if previous_child_container is None:
+                errors.append(
+                    f"self_checks.yaml:{line_number}: scalar value cannot contain child entries"
+                )
+            elif previous_child_container not in {"unknown", item_container}:
+                errors.append(
+                    f"self_checks.yaml:{line_number}: expected {previous_child_container} child entries"
+                )
+            containers[indent] = (
+                item_container
+                if previous_child_container in {None, "unknown"}
+                else previous_child_container
+            )
+        else:
+            for nested_indent in [level for level in containers if level > indent]:
+                del containers[nested_indent]
+
+        expected_container = containers.get(indent)
+        if expected_container is None:
+            errors.append(
+                f"self_checks.yaml:{line_number}: no parent container for indentation {indent}"
+            )
+            containers[indent] = item_container
+        elif expected_container != item_container:
+            errors.append(
+                f"self_checks.yaml:{line_number}: expected {expected_container} entry at indentation {indent}"
+            )
+
+        next_child_container: Optional[str] = None
+        if mapping_match:
+            key = mapping_match.group("key")
+            value = mapping_match.group("value") or ""
+            if indent == 0 and not is_sequence_item:
+                root_keys.append(key)
+                if key not in SELF_CHECK_ROOT_KEYS:
+                    errors.append(
+                        f"self_checks.yaml:{line_number}: unsupported root key {key}"
+                    )
+            if value:
+                if parse_yaml_scalar(value) is None:
+                    errors.append(
+                        f"self_checks.yaml:{line_number}: unterminated quoted scalar"
+                    )
+                elif value[0] in "[{" or value[-1:] in "]}":
+                    errors.append(
+                        f"self_checks.yaml:{line_number}: inline collections are not supported"
+                    )
+            if is_sequence_item:
+                next_child_container = "mapping"
+            elif not value:
+                next_child_container = "unknown"
+        elif is_sequence_item:
+            value = content[2:].strip()
+            if not value:
+                errors.append(f"self_checks.yaml:{line_number}: empty list item")
+            elif parse_yaml_scalar(value) is None:
+                errors.append(
+                    f"self_checks.yaml:{line_number}: unterminated quoted scalar"
+                )
+        else:
+            errors.append(
+                f"self_checks.yaml:{line_number}: unsupported limited-YAML syntax"
+            )
+
+        previous_indent = indent
+        previous_child_container = next_child_container
+
+    root_counts = Counter(root_keys)
+    missing_root_keys = sorted(SELF_CHECK_ROOT_KEYS - set(root_keys))
+    if missing_root_keys:
+        errors.append(
+            "self_checks.yaml: missing root key(s): " + ", ".join(missing_root_keys)
+        )
+    duplicate_root_keys = sorted(
+        key for key, count in root_counts.items() if count > 1
+    )
+    if duplicate_root_keys:
+        errors.append(
+            "self_checks.yaml: duplicate root key(s): " + ", ".join(duplicate_root_keys)
+        )
+
+
+def parse_self_checks(
+    text: str, errors: Optional[list[str]] = None
+) -> dict[str, dict[str, Optional[str]]]:
     cases: dict[str, dict[str, Optional[str]]] = {}
     for match in re.finditer(
         r"^\s+- id: (?P<id>[^\s]+)\s*\n(?P<body>.*?)(?=^\s+- id: |\Z)",
@@ -141,12 +331,30 @@ def parse_self_checks(text: str) -> dict[str, dict[str, Optional[str]]]:
         prompt_match = re.search(r"^\s+prompt:\s*(?P<prompt>.*?)\s*$", body, flags=re.M)
         if prompt_match:
             prompt = parse_yaml_scalar(prompt_match.group("prompt"))
-        cases[match.group("id")] = {"prompt": prompt}
+        expected_trigger = None
+        expected_trigger_match = re.search(
+            r"^\s+should_trigger_skill:\s*(?P<value>.*?)\s*$", body, flags=re.M
+        )
+        if expected_trigger_match:
+            expected_trigger = parse_yaml_scalar(expected_trigger_match.group("value"))
+        case_id = match.group("id")
+        if case_id in cases and errors is not None:
+            errors.append(f"self_checks.yaml: duplicate id {case_id}")
+            continue
+        cases[case_id] = {
+            "prompt": prompt,
+            "should_trigger_skill": expected_trigger,
+        }
     return cases
 
 
-def load_self_checks() -> dict[str, dict[str, Optional[str]]]:
-    return parse_self_checks(SELF_CHECKS.read_text(encoding="utf-8"))
+def load_self_checks(
+    errors: Optional[list[str]] = None,
+) -> dict[str, dict[str, Optional[str]]]:
+    text = SELF_CHECKS.read_text(encoding="utf-8")
+    if errors is not None:
+        validate_self_check_yaml_subset(text, errors)
+    return parse_self_checks(text, errors)
 
 
 def validate_iso_timestamp(value: str, case_id: str, errors: list[str], field: str) -> None:
@@ -621,7 +829,7 @@ def validate_case(
     prompt_row = prompts.get(case_id)
     if prompt_row is None:
         errors.append(f"{case_id}: missing from prompts.csv")
-    elif case.get("prompt") != prompt_row["prompt"]:
+    elif case.get("prompt") != prompt_row.get("prompt"):
         errors.append(f"{case_id}: prompt differs from prompts.csv")
 
     self_check = self_checks.get(case_id)
@@ -632,10 +840,22 @@ def validate_case(
     elif case.get("prompt") != self_check["prompt"]:
         errors.append(f"{case_id}: prompt differs from self_checks.yaml")
 
+    self_check_trigger = self_check.get("should_trigger_skill") if self_check else None
+    if self_check_trigger is not None:
+        normalized_trigger = str(self_check_trigger).strip().lower()
+        if normalized_trigger not in {"true", "false"}:
+            errors.append(
+                f"{case_id}: self_checks.yaml expected.should_trigger_skill must be true or false"
+            )
+        elif case.get("should_trigger_skill") != (normalized_trigger == "true"):
+            errors.append(f"{case_id}: should_trigger_skill differs from self_checks.yaml")
+
     expected_should_trigger = case.get("should_trigger_skill")
     if prompt_row is not None:
-        csv_should_trigger = prompt_row["should_trigger"].strip().lower() == "true"
-        if expected_should_trigger != csv_should_trigger:
+        csv_trigger_value = (prompt_row.get("should_trigger") or "").strip().lower()
+        if csv_trigger_value in {"true", "false"} and expected_should_trigger != (
+            csv_trigger_value == "true"
+        ):
             errors.append(f"{case_id}: should_trigger_skill differs from prompts.csv")
 
     if case.get("locale") not in {"ko", "en", "mixed"}:
@@ -668,6 +888,11 @@ def validate_case(
     if expected_should_trigger is not True:
         errors.append(f"{case_id}: should_trigger_skill must be true or false")
         return
+
+    if not EXPLICIT_WATCHLIST_CONTEXT_RE.search(str(case.get("prompt", ""))):
+        errors.append(
+            f"{case_id}: should_trigger_skill=true requires explicit WATCHLIST or valid WL item context"
+        )
 
     operation = expected.get("operation")
     if not operation:
@@ -758,6 +983,16 @@ def validate_trigger_case_list(cases: object, errors: list[str]) -> int:
                     f"{case_id}: reason {reason} must use expected={expected_for_reason}"
                 )
 
+        has_explicit_context = bool(
+            EXPLICIT_WATCHLIST_CONTEXT_RE.search(str(case.get("prompt", "")))
+        )
+        if expected == "trigger" and not has_explicit_context:
+            errors.append(f"{case_id}: trigger prompt requires explicit WATCHLIST context")
+        if reason in NO_EXPLICIT_CONTEXT_REASONS and has_explicit_context:
+            errors.append(
+                f"{case_id}: reason {reason} must not use explicit WATCHLIST context"
+            )
+
     for decision, count in decisions.items():
         if count < 8:
             errors.append(f"trigger_cases.json: expected at least 8 {decision} cases")
@@ -791,8 +1026,8 @@ def main() -> int:
     if not CASES_DIR.is_dir():
         return fail(f"Missing cases directory: {CASES_DIR}")
 
-    prompts = load_prompts()
-    self_checks = load_self_checks()
+    prompts = load_prompts(errors)
+    self_checks = load_self_checks(errors)
     case_paths = sorted(CASES_DIR.glob("*.json"))
     if not case_paths:
         return fail(f"No semantic cases found in {CASES_DIR}")
@@ -829,7 +1064,7 @@ def main() -> int:
         return fail("Semantic case check failed:\n" + "\n".join(f"- {error}" for error in errors))
 
     print(
-        f"Semantic case check passed: {len(case_paths)} case(s); "
+        f"Evaluation contract lint passed: {len(case_paths)} case(s); "
         f"{trigger_case_count} trigger case(s)"
     )
     return 0
