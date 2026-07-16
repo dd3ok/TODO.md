@@ -37,7 +37,7 @@ KNOWN_TOP_LEVEL_FIELDS = set(SKELETON_FIELDS).union(
 SKELETON_SECTIONS = ("## Open", "## Done")
 HEADING_RE_COMPAT = re.compile(r"^### (WL-\d{8}-\d{3})\s+(?P<separator>—|-)\s+.+$")
 TIMESTAMP_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$"
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:[0-5]\d)$"
 )
 FIELD_RE = re.compile(r"^- ([a-z_]+):[ \t]*(.*)$", flags=re.M)
 TOP_LEVEL_FIELD_RE = re.compile(r"^([a-z_]+):[ \t]*(.*)$", flags=re.M)
@@ -205,8 +205,9 @@ def validate_timestamp(
 
 def validate_skeleton(text: str, result: ValidationResult, options: ValidationOptions) -> None:
     text = strip_html_comments(text)
+    preamble = re.split(r"^##\s+", text, maxsplit=1, flags=re.M)[0]
     for field in SKELETON_FIELDS:
-        if not re.search(rf"^{field}:\s*\S+", text, flags=re.M):
+        if not re.search(rf"^{field}:\s*\S+", preamble, flags=re.M):
             add_error(result, "MISSING_SKELETON_FIELD", f"Missing WATCHLIST skeleton field: {field}")
     if not re.search(r"^# WATCHLIST\.md\s*$", text, flags=re.M):
         add_error(result, "MISSING_SKELETON_HEADING", "Missing WATCHLIST skeleton heading: # WATCHLIST.md")
@@ -260,8 +261,24 @@ def add_format_finding(
 
 def validate_top_level_fields(text: str, result: ValidationResult, options: ValidationOptions) -> None:
     fields = top_level_fields(text, result, options)
+    schema_version = fields.get("schema_version")
+    automation = fields.get("automation")
     archive_policy = fields.get("archive_policy")
     archive_after_days = fields.get("archive_after_days")
+
+    if schema_version and schema_version != "1":
+        add_error(
+            result,
+            "INVALID_SCHEMA_VERSION",
+            f"Invalid schema_version: {schema_version}. Use 1.",
+        )
+
+    if automation and automation != "none":
+        add_error(
+            result,
+            "INVALID_AUTOMATION",
+            f"Invalid automation: {automation}. Use none.",
+        )
 
     if archive_policy and archive_policy not in VALID_ARCHIVE_POLICIES:
         add_error(
@@ -347,6 +364,9 @@ def validate_status_rules(result: ValidationResult, watch_id: str, fields: dict[
             allow_unscheduled=False,
         )
 
+    if status == "open":
+        for field in ("source", "trigger", "action", "done_when"):
+            require_field_value(result, watch_id, fields, field, "open item")
     if status == "done":
         require_field_value(result, watch_id, fields, "result", "done item")
         require_field_value(result, watch_id, fields, "last_checked_at", "done item")

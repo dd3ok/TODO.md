@@ -22,6 +22,10 @@ Allowed `archive_policy` values:
 When `archive_policy: suggest` is used, add `archive_after_days: N` with a
 positive integer.
 
+Use a non-empty IANA time-zone name such as `Asia/Seoul` for `timezone`. The
+maintainer validator currently checks this field for presence only; it does not
+resolve the name against a host timezone database.
+
 ## Sections
 
 Required sections:
@@ -84,17 +88,23 @@ Keep item fields in this order:
 
 `priority`:
 
-- `P0`
-- `P1`
-- `P2`
-- `P3`
+- `P0`: critical or urgent
+- `P1`: high or time-sensitive
+- `P2`: normal
+- `P3`: low or optional
+
+Priority expresses review urgency, not permission to run automatically. Preserve
+an explicit user or repository convention; otherwise choose conservatively.
 
 `owner`:
 
-- `user`
-- `assistant_on_review`
-- `both`
-- `external`
+- `user`: the user acts at the next explicit review
+- `assistant_on_review`: the assistant acts when the item is explicitly reviewed
+- `both`: user and assistant each have a review-time action
+- `external`: another person or system owns the next action
+
+Owner describes who acts during an explicit WATCHLIST review. It does not grant
+background execution, wakeups, or access to an external system.
 
 ## Required populated values
 

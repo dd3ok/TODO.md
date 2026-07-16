@@ -29,13 +29,18 @@ an update, a check is performed, or the result is known.
 | `blocked` | `snoozed` | blocker remains but the next review time is known | `due_at`, `last_checked_at`, `result` |
 | `blocked` | `done` | `done_when` is satisfied or the user reports completion | `last_checked_at`, `result` |
 | any active status | `dropped` | user says to drop, cancel, or ignore | `result` |
-| `done` or `dropped` | active status | user explicitly asks to reopen | `result` describing the reopen reason |
+| `done` or `dropped` | active status | user explicitly asks to reopen | `result` describing the reopen reason, plus the target status requirements in `format.md` |
 
-When marking an item done, the default lifecycle update is: set `status: done`,
-fill `last_checked_at`, fill `result`, and move the completed item under `## Done`
-if that section exists. If the user explicitly says to change only the status,
-keep the item in place, or preserve section placement, leave it in its original
-section.
+By default, section placement follows status:
+
+- Keep `open`, `snoozed`, and `blocked` items under `## Open`.
+- Move `done` and `dropped` items under `## Done` when that section exists.
+- Move a reopened `done` or `dropped` item back under `## Open`.
+- Move terminal items under `## Archive` only after an explicit archive request.
+
+These moves are part of the default lifecycle update. If the user explicitly
+asks to change only the status, keep an item in place, or preserve section
+placement, leave it in its original section.
 
 ## Archive Policy
 

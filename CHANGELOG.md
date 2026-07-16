@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added regression coverage for validator false negatives, trigger-boundary
+  pairs, exact package contents, and template/example drift.
+- Added the MIT notice to the standalone runtime bundle.
 - Added English and Korean semantic coverage for default local/private
   watchlist creation when no WATCHLIST file exists.
 - Added a broad staging self-check to keep private `.watchlist/WATCHLIST.md` data
@@ -17,9 +20,24 @@
 
 ### Changed
 
+- Aligned runtime metadata, lifecycle/enum guidance, vendor installation paths,
+  and compatibility claims with their documented contracts and smoke status.
+- Clarified that semantic-case checks lint declared fixtures and contracts; they
+  do not execute an LLM, agent, or runtime.
 - Made the installable skill bundle py-free and slimmer by moving the WATCHLIST
   validator and self-check prompts to source-repository maintainer tooling,
   trimming `SKILL.md`, tightening package guards, and preserving CI validation.
+
+### Fixed
+
+- Rejected invalid skeleton values, misplaced top-level fields, empty open-item
+  semantics, and overflowing timezone-offset minutes in the maintainer validator.
+- Scoped positive trigger cases to explicit WATCHLIST context and preserved the
+  original generic prompts as negative routing cases.
+- Replaced the clean-clone-invalid contributor validation command and enforced
+  the documented exact runtime package allowlist.
+- Allowed explicit WATCHLIST negation as a declared no-trigger intent and made
+  the dependency-free YAML subset validator track parent container types.
 
 ## [0.4.2] - 2026-06-10
 

@@ -21,7 +21,7 @@ Do not copy the literal ID or timestamps; generate fresh values when adding an i
 ### WL-20260514-001 — GitHub Actions 결과 확인
 - status: open
 - priority: P1
-- owner: user|assistant_on_review|both|external
+- owner: assistant_on_review
 - due_at: 2026-05-14T17:00:00+09:00
 - created_at: 2026-05-14T16:30:00+09:00
 - source: GitHub Actions run for PR #123

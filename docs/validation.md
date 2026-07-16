@@ -16,7 +16,24 @@ python3 evals/check_semantic_cases.py
 python3 evals/check_skill_package.py
 ```
 
-`evals/prompts.csv`, `evals/rubric.md`, `evals/self_checks.yaml`, `evals/cases/*.json`, and `evals/trigger_cases.json` are small prompt and trigger regression sets. The Semantic case checker validates the expected trigger and operation contract; it does not run an LLM, agent, browser, network call, or runtime integration.
+`evals/cases/*.json` is the canonical deterministic operation-contract corpus.
+`evals/prompts.csv` and `evals/self_checks.yaml` mirror its IDs and prompts for
+manual runs. Their expected fields are manual expectations, not executed agent
+assertions; `expected.should_trigger_skill`, when present in YAML, is cross-checked
+for routing parity.
+`evals/trigger_cases.json` is a small prompt-routing contract corpus.
+For semantic operation cases, `should_trigger_skill` is the declared intent;
+mentioning WATCHLIST is not automatically positive when the prompt explicitly
+rejects using it. Prompt-only routing exceptions use named trigger reasons.
+
+The evaluation contract linter (`evals/check_semantic_cases.py`) checks corpus
+shape, prompt/trigger alignment, declared contract rules, and fixture validity.
+It does not run an LLM, agent, browser, network call, or runtime integration.
+`fixed_now` is validated as data but is not injected into an agent. A passing
+lint therefore must not be reported as an agent-behavior or runtime smoke pass.
+To stay dependency-free, `self_checks.yaml` is checked against the limited YAML
+structure used by this repository. The checker tracks mapping/sequence parents
+and rejects children under scalar values; it does not accept arbitrary YAML.
 
 ## Item Format
 
@@ -38,7 +55,9 @@ python3 evals/check_skill_package.py
 - next_step_on_fail: Summarize the logs and confirm whether the user wants a fix
 ```
 
-The validator requires every field key in the stable order shown above, but not every field needs a populated value for an open item.
+The validator requires every field key. Default mode reports field-order drift as
+a warning; `--strict-format` promotes it to an error. For an open item, only
+`last_checked_at` and `result` are normally left blank.
 
 Required values for open items are `status`, `priority`, `owner`, `due_at`, `created_at`, `source`, `trigger`, `action`, and `done_when`. Recommended when known: `next_step_on_fail`. Normally blank until checked: `last_checked_at` and `result`.
 

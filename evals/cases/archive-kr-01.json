@@ -1,6 +1,6 @@
 {
   "id": "archive-kr-01",
-  "prompt": "30일 지난 done/dropped 항목을 Archive로 옮겨줘.",
+  "prompt": "WATCHLIST.md에서 30일 지난 done/dropped 항목을 Archive로 옮겨줘.",
   "locale": "ko",
   "fixed_now": "2026-05-14T16:30:00+09:00",
   "fixture": "with-archivable-items.watchlist.md",

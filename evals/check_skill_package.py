@@ -4,6 +4,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ PACKAGE_ROOT = "watchlist-md"
 
 REQUIRED_FILES = {
     "watchlist-md/SKILL.md",
+    "watchlist-md/LICENSE.txt",
     "watchlist-md/agents/openai.yaml",
     "watchlist-md/assets/WATCHLIST.template.md",
     "watchlist-md/references/format.md",
@@ -51,7 +53,10 @@ def build_package(zip_path: Path) -> None:
 def validate_package(zip_path: Path) -> list[str]:
     errors: list[str] = []
     with zipfile.ZipFile(zip_path) as archive:
-        names = set(archive.namelist())
+        archive_names = archive.namelist()
+    names = set(archive_names)
+    file_entries = [name for name in archive_names if not name.endswith("/")]
+    file_names = set(file_entries)
 
     top_level = {name.split("/", 1)[0] for name in names if name}
     if top_level != {PACKAGE_ROOT}:
@@ -59,11 +64,21 @@ def validate_package(zip_path: Path) -> list[str]:
             f"package must contain one top-level {PACKAGE_ROOT}/ directory, got {sorted(top_level)}"
         )
 
-    missing = sorted(REQUIRED_FILES - names)
+    missing = sorted(REQUIRED_FILES - file_names)
     if missing:
         errors.append("missing required package file(s): " + ", ".join(missing))
 
-    for name in sorted(names):
+    unexpected = sorted(file_names - REQUIRED_FILES)
+    if unexpected:
+        errors.append("unexpected package file(s): " + ", ".join(unexpected))
+
+    duplicates = sorted(
+        name for name, count in Counter(file_entries).items() if count > 1
+    )
+    if duplicates:
+        errors.append("duplicate package file(s): " + ", ".join(duplicates))
+
+    for name in sorted(file_names):
         parts = {part.lower() for part in Path(name).parts}
         path_parts = Path(name).parts
         package_relative_parts = path_parts[1:] if path_parts[:1] == (PACKAGE_ROOT,) else path_parts

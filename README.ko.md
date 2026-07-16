@@ -6,7 +6,7 @@
 
 [English README](README.md)
 
-`WATCHLIST.md`는 deferred check를 기록하기 위한 경량 **AI Agent Skill**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes가 CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일을 scheduler, daemon, database, MCP server 없이 추적하도록 돕습니다.
+`WATCHLIST.md`는 deferred check를 기록하기 위한 경량 **AI Agent Skill**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, Hermes에서 CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일을 scheduler, daemon, database, MCP server 없이 추적하도록 설계됐습니다. 문서상 format/path 호환성과 실제 runtime 검증은 구분하며, runtime smoke matrix의 pending 상태를 기준으로 봅니다.
 
 이 스킬은 자율 스케줄러, 자율 알림, daemon, database, cron job, UI, background worker가 아닙니다. 나중에 확인할 일을 기록할 뿐이며, 스스로 깨어나거나 polling, 알림, 확인 실행을 하지 않습니다.
 
@@ -38,10 +38,11 @@ python3 evals/check_watchlist.py examples/WATCHLIST.example.md
 .agents/skills/watchlist-md
 ```
 
-runtime bundle에는 스킬 지시문, 템플릿, OpenAI 메타데이터, 짧은 reference가 들어갑니다:
+runtime bundle에는 스킬 지시문, 라이선스 고지, 템플릿, OpenAI 메타데이터, 짧은 reference가 들어갑니다:
 
 ```text
 .agents/skills/watchlist-md/SKILL.md
+.agents/skills/watchlist-md/LICENSE.txt
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
 .agents/skills/watchlist-md/references/format.md
@@ -71,11 +72,11 @@ Markdown 편집으로 add, review, complete, blocked, snoozed, dropped, explicit
 
 `.agents/skills/watchlist-md/`에 CLI, MCP server, browser automation, bundled validator, smoke transcript, screenshot, 긴 eval corpus를 넣지 마세요.
 
-Gemini CLI, Kilo, OpenClaw, Hermes 같은 AgentSkills 호환 런타임은 가능하면 같은 스킬 디렉토리를 사용하세요. OpenClaw와 Hermes는 runtime smoke 전까지 AgentSkills 호환/manual 지원으로 보고, 리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리를 설치하세요.
+각 벤더가 문서화한 discovery path 또는 install flow를 사용하세요. format/path 호환성은 runtime smoke pass가 아닙니다. 설치 세부사항과 pending 검증 matrix는 `docs/install.md`와 `docs/runtime-smoke.md`에 있습니다.
 
 ## Docs
 
-- [Installation](docs/install.md): Codex, Claude Code, OpenAI Skills zip packaging, AgentSkills-compatible runtime notes.
+- [Installation](docs/install.md): vendor discovery path, Codex·Claude Code setup, standalone zip packaging.
 - [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, retention.
 - [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, item format expectations.
 - [Runtime smoke](docs/runtime-smoke.md): transcript나 raw log 없는 compact vendor/runtime smoke matrix.

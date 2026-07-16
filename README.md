@@ -6,7 +6,7 @@
 
 [Korean README](README.ko.md)
 
-`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks. It helps Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes track CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, and emails without creating a scheduler, daemon, database, or MCP server.
+`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks. It is designed for Codex, Claude Code, OpenClaw, Gemini CLI, Kilo, and Hermes to track CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, and emails without creating a scheduler, daemon, database, or MCP server. Documented format and path compatibility is separate from real runtime verification; see the pending rows in the runtime smoke matrix.
 
 It is not an autonomous scheduler, reminder service, daemon, database, cron job, UI, or background worker. It records what should be checked later; it does not wake up, poll, notify, or run checks by itself.
 
@@ -38,10 +38,11 @@ Install or copy the skill directory whose root contains `SKILL.md`, not the repo
 .agents/skills/watchlist-md
 ```
 
-The runtime bundle contains the skill instructions, template, OpenAI metadata, and compact references:
+The runtime bundle contains the skill instructions, license notice, template, OpenAI metadata, and compact references:
 
 ```text
 .agents/skills/watchlist-md/SKILL.md
+.agents/skills/watchlist-md/LICENSE.txt
 .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 .agents/skills/watchlist-md/agents/openai.yaml
 .agents/skills/watchlist-md/references/format.md
@@ -71,11 +72,11 @@ The installable runtime skill stays Python-free. Agents edit Markdown directly f
 
 Do not add a CLI, MCP server, browser automation, bundled validator, smoke transcript, screenshot, or long eval corpus to `.agents/skills/watchlist-md/`.
 
-AgentSkills-compatible runtimes such as Gemini CLI, Kilo, OpenClaw, and Hermes should use the same skill directory when possible. For OpenClaw and Hermes, treat support as AgentSkills-compatible/manual until runtime-smoked; install the skill directory whose root contains `SKILL.md`, not the repository root.
+Use each vendor's documented discovery path or install flow. Format/path compatibility does not count as a runtime smoke pass; install details and the pending verification matrix are in `docs/install.md` and `docs/runtime-smoke.md`.
 
 ## Docs
 
-- [Installation](docs/install.md): Codex, Claude Code, OpenAI Skills zip packaging, and AgentSkills-compatible runtime notes.
+- [Installation](docs/install.md): vendor discovery paths, Codex and Claude Code setup, and standalone zip packaging.
 - [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, and retention.
 - [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, and item format expectations.
 - [Runtime smoke](docs/runtime-smoke.md): compact vendor/runtime smoke matrix without transcripts or raw logs.

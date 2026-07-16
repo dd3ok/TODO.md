@@ -1,7 +1,6 @@
 ---
 name: watchlist-md
-description: >-
-  Use when recording, reviewing, or updating WATCHLIST.md/WL-YYYYMMDD-NNN deferred checks for CI/deploy/job/sync/order/PR/ticket/email 후속 체크; not generic calendars/wakeups/polling or lifecycle words unless WATCHLIST-scoped.
+description: Record, review, or update WATCHLIST.md/WL-YYYYMMDD-NNN deferred checks and 후속 체크; not generic reminders, wakeups, polling, or unscoped lifecycle requests.
 ---
 
 # WATCHLIST.md
@@ -44,7 +43,7 @@ unused `WL-YYYYMMDD-NNN`, edit `## Open` only.
 ### WL-YYYYMMDD-NNN — Short title
 - status: open
 - priority: P1
-- owner: user|assistant_on_review|both|external
+- owner: assistant_on_review
 - due_at: YYYY-MM-DDTHH:MM:SS+09:00
 - created_at: YYYY-MM-DDTHH:MM:SS+09:00
 - source: short stable pointer, safe link, file, PR, issue, or conversation note
