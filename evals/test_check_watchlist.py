@@ -11,8 +11,10 @@ import csv
 import importlib.util
 import json
 import re
+import stat
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +44,34 @@ _CHECK_WRAPPER_SPEC = importlib.util.spec_from_file_location(
 )
 CHECK_WRAPPER = importlib.util.module_from_spec(_CHECK_WRAPPER_SPEC)
 _CHECK_WRAPPER_SPEC.loader.exec_module(CHECK_WRAPPER)
+
+
+def find_central_entry_offset(raw_archive, central_offset, target):
+    cursor = central_offset
+    encoded_target = target.encode("ascii")
+    while raw_archive[cursor : cursor + 4] == b"PK\x01\x02":
+        filename_size = int.from_bytes(
+            raw_archive[cursor + 28 : cursor + 30], "little"
+        )
+        extra_size = int.from_bytes(
+            raw_archive[cursor + 30 : cursor + 32], "little"
+        )
+        comment_size = int.from_bytes(
+            raw_archive[cursor + 32 : cursor + 34], "little"
+        )
+        filename = bytes(raw_archive[cursor + 46 : cursor + 46 + filename_size])
+        if filename == encoded_target:
+            return cursor
+        cursor += 46 + filename_size + extra_size + comment_size
+    raise AssertionError(f"central entry not found: {target}")
+
+
+def safe_directory_info(name, compression=zipfile.ZIP_STORED):
+    info = zipfile.ZipInfo(name)
+    info.create_system = 3
+    info.external_attr = ((stat.S_IFDIR | 0o755) << 16) | 0x10
+    info.compress_type = compression
+    return info
 
 
 def parse_skill_frontmatter_description(text):
@@ -1162,6 +1192,7 @@ timezone: Asia/Seoul
         self.assertIn("Git 2.40 or newer", release)
         self.assertIn("same Git/platform toolchain", release)
         self.assertIn("not promise identical bytes across every Git build", release)
+        self.assertIn("validation also rejects unsafe paths", release)
         self.assertNotIn(
             "git diff HEAD --name-only -- .agents/skills/watchlist-md",
             release,
@@ -1198,6 +1229,21 @@ timezone: Asia/Seoul
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("Skill package check passed", result.stdout)
 
+    def test_skill_package_manifest_rejects_unsafe_paths(self):
+        original_entries = PACKAGE_CHECK.MANIFEST_ENTRIES
+        original_required = PACKAGE_CHECK.REQUIRED_FILES
+        try:
+            PACKAGE_CHECK.MANIFEST_ENTRIES = ["watchlist-md/../outside"]
+            PACKAGE_CHECK.REQUIRED_FILES = frozenset(PACKAGE_CHECK.MANIFEST_ENTRIES)
+            errors = PACKAGE_CHECK.validate_manifest()
+        finally:
+            PACKAGE_CHECK.MANIFEST_ENTRIES = original_entries
+            PACKAGE_CHECK.REQUIRED_FILES = original_required
+
+        self.assertIn(
+            "invalid package manifest entry(s): watchlist-md/../outside", errors
+        )
+
     def test_archive_validation_does_not_require_a_source_skill_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             archive_path = Path(tmpdir) / "package.zip"
@@ -1213,6 +1259,127 @@ timezone: Asia/Seoul
                 PACKAGE_CHECK.SKILL_DIR = original_skill_dir
 
         self.assertEqual(result, 0)
+
+    def test_source_packaging_rejects_symlinks_without_following_them(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temporary_root = Path(tmpdir)
+            source_dir = temporary_root / "watchlist-md"
+            link_name = "watchlist-md/SKILL.md"
+            for name in PACKAGE_CHECK.REQUIRED_FILES:
+                if name == link_name:
+                    continue
+                path = source_dir.joinpath(*name.split("/")[1:])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("safe", encoding="utf-8")
+            outside = temporary_root / "outside-secret.txt"
+            outside.write_text("secret-outside", encoding="utf-8")
+            link = source_dir / "SKILL.md"
+            try:
+                link.symlink_to(outside)
+            except OSError as exc:
+                self.skipTest(f"symlink creation is unavailable: {exc}")
+
+            archive_path = temporary_root / "package.zip"
+            with mock.patch.object(PACKAGE_CHECK, "SKILL_DIR", source_dir):
+                errors = PACKAGE_CHECK.build_package(archive_path)
+            self.assertFalse(archive_path.exists())
+
+        self.assertTrue(
+            any("must not be a link or reparse point" in error for error in errors),
+            errors,
+        )
+
+    def test_source_packaging_rejects_link_metadata_on_all_platforms(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temporary_root = Path(tmpdir)
+            source_dir = temporary_root / "watchlist-md"
+            disguised_link = source_dir / "SKILL.md"
+            for name in PACKAGE_CHECK.REQUIRED_FILES:
+                path = source_dir.joinpath(*name.split("/")[1:])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("safe", encoding="utf-8")
+
+            original_lstat = Path.lstat
+
+            def mocked_lstat(path):
+                if path == disguised_link:
+                    return mock.Mock(st_mode=stat.S_IFLNK | 0o777)
+                return original_lstat(path)
+
+            archive_path = temporary_root / "package.zip"
+            with mock.patch.object(
+                PACKAGE_CHECK, "SKILL_DIR", source_dir
+            ), mock.patch.object(
+                Path, "lstat", autospec=True, side_effect=mocked_lstat
+            ):
+                errors = PACKAGE_CHECK.build_package(archive_path)
+            self.assertFalse(archive_path.exists())
+
+        self.assertTrue(
+            any("must not be a link or reparse point" in error for error in errors),
+            errors,
+        )
+
+    def test_source_packaging_allows_hard_linked_regular_file_bytes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temporary_root = Path(tmpdir)
+            source_dir = temporary_root / "watchlist-md"
+            hard_link_name = "watchlist-md/SKILL.md"
+            for name in PACKAGE_CHECK.REQUIRED_FILES:
+                if name == hard_link_name:
+                    continue
+                path = source_dir.joinpath(*name.split("/")[1:])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("safe", encoding="utf-8")
+            outside = temporary_root / "shared-regular-file.txt"
+            outside.write_bytes(b"shared regular bytes")
+            hard_link = source_dir / "SKILL.md"
+            try:
+                os.link(outside, hard_link)
+            except OSError as exc:
+                self.skipTest(f"hard-link creation is unavailable: {exc}")
+
+            archive_path = temporary_root / "package.zip"
+            with mock.patch.object(PACKAGE_CHECK, "SKILL_DIR", source_dir):
+                build_errors = PACKAGE_CHECK.build_package(archive_path)
+            validation_errors = PACKAGE_CHECK.validate_package(archive_path)
+            with zipfile.ZipFile(archive_path) as archive:
+                packaged_content = archive.read(hard_link_name)
+
+        self.assertEqual(build_errors, [])
+        self.assertEqual(validation_errors, [])
+        self.assertEqual(packaged_content, b"shared regular bytes")
+
+    def test_source_packaging_checks_manifest_and_size_before_writing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temporary_root = Path(tmpdir)
+            source_dir = temporary_root / "watchlist-md"
+            oversized_name = "watchlist-md/SKILL.md"
+            for name in PACKAGE_CHECK.REQUIRED_FILES:
+                path = source_dir.joinpath(*name.split("/")[1:])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                content = (
+                    b"X" * (PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE + 1)
+                    if name == oversized_name
+                    else b"safe"
+                )
+                path.write_bytes(content)
+            unexpected = source_dir / "unexpected.txt"
+            unexpected.write_text("unexpected", encoding="utf-8")
+
+            archive_path = temporary_root / "package.zip"
+            with mock.patch.object(PACKAGE_CHECK, "SKILL_DIR", source_dir):
+                errors = PACKAGE_CHECK.build_package(archive_path)
+            self.assertFalse(archive_path.exists())
+
+        self.assertIn(
+            "unexpected skill source file(s): watchlist-md/unexpected.txt", errors
+        )
+        self.assertIn(
+            f"skill source file exceeds {PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE} bytes: "
+            + oversized_name,
+            errors,
+        )
 
     def test_fixed_commit_mtime_and_utc_make_same_toolchain_archive_repeatable(self):
         archive_help = subprocess.run(
@@ -1317,6 +1484,701 @@ timezone: Asia/Seoul
             errors,
         )
 
+    def test_skill_package_checker_rejects_unsafe_paths_in_all_entry_types(self):
+        unsafe_names = [
+            "watchlist-md/../../outside/",
+            "/watchlist-md/outside/",
+            "watchlist-md/./outside/",
+            "watchlist-md//outside/",
+            "watchlist-md/file:stream/",
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "unsafe-paths.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                for name in unsafe_names:
+                    archive.writestr(name, "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        for name in unsafe_names:
+            with self.subTest(name=name):
+                self.assertIn(f"unsafe package entry path: {name}", errors)
+        self.assertTrue(
+            PACKAGE_CHECK.unsafe_archive_path("watchlist-md\\outside/", True)
+        )
+
+    def test_skill_package_checker_rejects_nul_truncated_filenames(self):
+        target = "watchlist-md/SKILL.md"
+        encoded_target = (target + "X").encode("ascii")
+        encoded_nul_name = target.encode("ascii") + b"\x00"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "nul-name.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name + "X" if name == target else name, "")
+
+            raw_archive = zip_path.read_bytes()
+            self.assertEqual(raw_archive.count(encoded_target), 2)
+            zip_path.write_bytes(raw_archive.replace(encoded_target, encoded_nul_name))
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertTrue(
+            any("filename was normalized or truncated" in error for error in errors),
+            errors,
+        )
+        self.assertTrue(any("unsafe package entry path" in error for error in errors), errors)
+
+    def test_skill_package_checker_rejects_corrupt_payloads(self):
+        target = "watchlist-md/LICENSE.txt"
+        payload = b"unique-license-payload"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "corrupt.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, payload if name == target else b"")
+
+            raw_archive = zip_path.read_bytes()
+            self.assertEqual(raw_archive.count(payload), 1)
+            zip_path.write_bytes(raw_archive.replace(payload, b"X" + payload[1:]))
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"corrupt package entry: {target}", errors)
+
+    def test_skill_package_checker_rejects_invalid_utf8_filenames_without_traceback(self):
+        invalid_name = "watchlist-md/references/invalid-é.md"
+        encoded_name = invalid_name.encode("utf-8")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "invalid-utf8.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr(invalid_name, "")
+
+            raw_archive = zip_path.read_bytes()
+            self.assertEqual(raw_archive.count(encoded_name), 2)
+            zip_path.write_bytes(raw_archive.replace(encoded_name, encoded_name[:-2] + b"\xff\xff"))
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertTrue(
+            any(error.startswith("invalid or unreadable zip archive:") for error in errors),
+            errors,
+        )
+
+    def test_skill_package_checker_escapes_untrusted_names_in_cli_output(self):
+        unsafe_names = [
+            "watchlist-md/\x1b[2Jforged.txt",
+            "watchlist-md/line\nbreak.txt",
+            "watchlist-md/\u202eforged.txt",
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "terminal-control-names.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+                for name in unsafe_names:
+                    archive.writestr(name, b"")
+
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                result = PACKAGE_CHECK.main(
+                    ["check_skill_package.py", "--archive", str(zip_path)]
+                )
+            output = stderr.getvalue()
+
+        self.assertNotEqual(result, 0)
+        self.assertNotIn("\x1b", output)
+        self.assertNotIn("\u202e", output)
+        self.assertNotIn("line\nbreak.txt", output)
+        self.assertIn("\\x1b[2Jforged.txt", output)
+        self.assertIn("line\\nbreak.txt", output)
+        self.assertIn("\\u202eforged.txt", output)
+        bounded = PACKAGE_CHECK.safe_log_text("X" * 1000)
+        self.assertLessEqual(len(bounded), PACKAGE_CHECK.MAX_LOG_FIELD_LENGTH)
+        self.assertTrue(bounded.endswith("..."))
+
+    def test_skill_package_checker_normalizes_parser_failures_without_traceback(self):
+        failures = [
+            NotImplementedError("zip file version 9.9"),
+            EOFError("truncated member"),
+        ]
+        for failure in failures:
+            with self.subTest(failure=type(failure).__name__), mock.patch.object(
+                PACKAGE_CHECK.zipfile, "ZipFile", side_effect=failure
+            ):
+                errors = PACKAGE_CHECK.validate_package(Path("untrusted.zip"))
+
+            self.assertTrue(
+                any(error.startswith("invalid or unreadable zip archive:") for error in errors),
+                errors,
+            )
+
+    def test_skill_package_checker_normalizes_decompressor_failures(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "decompressor-error.zip"
+            with zipfile.ZipFile(
+                zip_path, "w", compression=zipfile.ZIP_DEFLATED
+            ) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "payload")
+
+            with mock.patch.object(
+                PACKAGE_CHECK.zlib,
+                "decompressobj",
+                side_effect=PACKAGE_CHECK.zlib.error("invalid distance"),
+            ):
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertTrue(
+            any(error.startswith("package integrity check failed:") for error in errors),
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_oversized_files(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "oversized.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    content = b"X" * (PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE + 1) if name == target else b""
+                    archive.writestr(name, content)
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            f"package entry exceeds {PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE} bytes: {target}",
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_payloads_hidden_in_directories(self):
+        target = "watchlist-md/agents/"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "directory-payload.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+                archive.writestr(
+                    target,
+                    b"X" * (PACKAGE_CHECK.MAX_ARCHIVE_TOTAL_SIZE + 1),
+                )
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"package directory entry must be empty: {target}", errors)
+        self.assertIn(
+            f"package uncompressed size exceeds {PACKAGE_CHECK.MAX_ARCHIVE_TOTAL_SIZE} bytes",
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_symlinks_and_special_file_types(self):
+        special_types = {
+            "symlink": stat.S_IFLNK,
+            "fifo": stat.S_IFIFO,
+            "character-device": stat.S_IFCHR,
+        }
+
+        for label, file_type in special_types.items():
+            with self.subTest(file_type=label), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / f"{label}.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 3
+                        info.external_attr = (file_type | 0o777) << 16
+                        archive.writestr(info, "../../outside")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            for name in PACKAGE_CHECK.REQUIRED_FILES:
+                self.assertIn(
+                    f"package entry must be a regular file: {name}", errors
+                )
+
+    def test_skill_package_checker_rejects_dos_directory_attribute_on_files(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "dos-directory-bit.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    if name == target:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 0
+                        info.external_attr = 0x10
+                        archive.writestr(info, b"")
+                    else:
+                        archive.writestr(name, b"")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"package entry must be a regular file: {target}", errors)
+
+    def test_skill_package_checker_rejects_dos_type_bits_on_unix_files(self):
+        target = "watchlist-md/SKILL.md"
+        for dos_attributes in [0x08, 0x10, 0x18]:
+            with self.subTest(dos_attributes=hex(dos_attributes)), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "unix-with-dos-type.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 3
+                        info.external_attr = (
+                            ((stat.S_IFREG | 0o644) << 16) | dos_attributes
+                            if name == target
+                            else (stat.S_IFREG | 0o644) << 16
+                        )
+                        archive.writestr(info, b"")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(f"package entry must be a regular file: {target}", errors)
+
+    def test_skill_package_checker_rejects_unix_special_bits_on_dos_entries(self):
+        target = "watchlist-md/SKILL.md"
+        for file_type in [stat.S_IFLNK, stat.S_IFIFO, stat.S_IFCHR]:
+            with self.subTest(file_type=file_type), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "dos-with-special-unix-bits.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 0
+                        info.external_attr = (
+                            ((file_type | 0o777) << 16)
+                            if name == target
+                            else ((stat.S_IFREG | 0o644) << 16)
+                        )
+                        archive.writestr(info, b"")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(f"package entry must be a regular file: {target}", errors)
+
+    def test_skill_package_checker_requires_matching_dos_directory_bit(self):
+        target = "watchlist-md/agents/"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "directory-without-dos-bit.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+                info = zipfile.ZipInfo(target)
+                info.create_system = 0
+                info.external_attr = (stat.S_IFDIR | 0o755) << 16
+                archive.writestr(info, b"")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"package entry must be a directory: {target}", errors)
+
+    def test_skill_package_checker_rejects_unreadable_unix_permissions(self):
+        target = "watchlist-md/SKILL.md"
+        for unsafe_mode in [stat.S_IFREG, stat.S_IFREG | 0o4644]:
+            with self.subTest(unsafe_mode=oct(unsafe_mode)), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "unsafe-unix-mode.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 3
+                        info.external_attr = (
+                            (unsafe_mode << 16)
+                            if name == target
+                            else ((stat.S_IFREG | 0o644) << 16)
+                        )
+                        archive.writestr(info, b"")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(
+                f"package entry has unsafe or unreadable permissions/attributes: {target}",
+                errors,
+            )
+
+    def test_skill_package_checker_rejects_hidden_system_and_reserved_dos_attributes(self):
+        target = "watchlist-md/SKILL.md"
+        for dos_attribute in [0x02, 0x04, 0x40, 0x80]:
+            with self.subTest(dos_attribute=hex(dos_attribute)), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "unsafe-dos-attribute.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        info.create_system = 0
+                        info.external_attr = (
+                            ((stat.S_IFREG | 0o666) << 16) | dos_attribute
+                            if name == target
+                            else ((stat.S_IFREG | 0o666) << 16)
+                        )
+                        archive.writestr(info, b"")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(
+                f"package entry has unsafe or unreadable permissions/attributes: {target}",
+                errors,
+            )
+
+    def test_skill_package_checker_rejects_unsupported_extra_fields(self):
+        target = "watchlist-md/SKILL.md"
+        unsafe_field_ids = [0x7075, 0x6C78, 0x000D, 0x9901]
+        for field_id in unsafe_field_ids:
+            with self.subTest(field_id=hex(field_id)), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "unsafe-extra.zip"
+                payload = b"../../outside"
+                field = (
+                    field_id.to_bytes(2, "little")
+                    + len(payload).to_bytes(2, "little")
+                    + payload
+                )
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        info = zipfile.ZipInfo(name)
+                        if name == target:
+                            info.extra = field
+                        archive.writestr(info, b"")
+
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(
+                f"unsupported central extra field 0x{field_id:04x}: {target}",
+                errors,
+            )
+
+    def test_skill_package_checker_rejects_duplicate_unicode_path_overrides(self):
+        target = "watchlist-md/SKILL.md"
+        raw_name = target.encode("ascii")
+
+        def unicode_path_field(path: bytes) -> bytes:
+            payload = b"\x01" + PACKAGE_CHECK.zlib.crc32(raw_name).to_bytes(4, "little") + path
+            return b"up" + len(payload).to_bytes(2, "little") + payload
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "duplicate-unicode-path.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    info = zipfile.ZipInfo(name)
+                    if name == target:
+                        info.extra = unicode_path_field(b"../../outside") + unicode_path_field(
+                            raw_name
+                        )
+                    archive.writestr(info, b"")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"unsupported central extra field 0x7075: {target}", errors)
+        self.assertIn(f"duplicate central extra field 0x7075: {target}", errors)
+
+    def test_skill_package_checker_validates_local_only_extra_fields(self):
+        target = "watchlist-md/SKILL.md"
+        allowed_timestamp = b"UT\x05\x00\x01\x00\x00\x00\x00"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "local-extra-override.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    info = zipfile.ZipInfo(name)
+                    if name == target:
+                        info.extra = allowed_timestamp
+                    archive.writestr(info, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                target_info = archive.getinfo(target)
+                local_offset = target_info.header_offset
+            raw_archive = bytearray(zip_path.read_bytes())
+            filename_size = int.from_bytes(
+                raw_archive[local_offset + 26 : local_offset + 28], "little"
+            )
+            extra_offset = local_offset + PACKAGE_CHECK.LOCAL_FILE_HEADER_SIZE + filename_size
+            self.assertEqual(raw_archive[extra_offset : extra_offset + 2], b"UT")
+            raw_archive[extra_offset : extra_offset + 2] = b"up"
+            zip_path.write_bytes(raw_archive)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"unsupported local extra field 0x7075: {target}", errors)
+
+    def test_skill_package_checker_compares_local_and_central_headers(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "local-header-mismatch.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                local_offset = archive.getinfo(target).header_offset
+            raw_archive = bytearray(zip_path.read_bytes())
+            raw_archive[local_offset + 6 : local_offset + 8] = (1).to_bytes(2, "little")
+            raw_archive[local_offset + 8 : local_offset + 10] = (8).to_bytes(2, "little")
+            raw_archive[local_offset + 10] ^= 1
+            raw_archive[local_offset + 12] ^= 1
+            raw_archive[local_offset + 14 : local_offset + 18] = (1).to_bytes(4, "little")
+            raw_archive[local_offset + 18 : local_offset + 22] = (1).to_bytes(4, "little")
+            raw_archive[local_offset + 22 : local_offset + 26] = (1).to_bytes(4, "little")
+            zip_path.write_bytes(raw_archive)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        for label in [
+            "flags",
+            "compression method",
+            "modification time",
+            "modification date",
+            "CRC",
+            "compressed size",
+            "file size",
+        ]:
+            self.assertIn(
+                f"local header {label} differs from central entry: {target}", errors
+            )
+
+    def test_skill_package_checker_rejects_unsupported_extraction_versions(self):
+        target = "watchlist-md/SKILL.md"
+        for requested_version in [45, 20 | (1 << 8)]:
+            with self.subTest(requested_version=requested_version), tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = Path(tmpdir) / "unsupported-extraction-version.zip"
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        archive.writestr(name, b"")
+
+                with zipfile.ZipFile(zip_path) as archive:
+                    target_info = archive.getinfo(target)
+                    local_offset = target_info.header_offset
+                    central_offset = archive.start_dir
+                raw_archive = bytearray(zip_path.read_bytes())
+                target_central_offset = find_central_entry_offset(
+                    raw_archive, central_offset, target
+                )
+                raw_archive[local_offset + 4 : local_offset + 6] = (
+                    requested_version.to_bytes(2, "little")
+                )
+                raw_archive[
+                    target_central_offset + 6 : target_central_offset + 8
+                ] = requested_version.to_bytes(2, "little")
+                zip_path.write_bytes(raw_archive)
+                errors = PACKAGE_CHECK.validate_package(zip_path)
+
+            self.assertIn(
+                f"unsupported package extraction version {requested_version}: {target}",
+                errors,
+            )
+
+    def test_skill_package_checker_rejects_invalid_matching_dos_timestamps(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "invalid-matching-dos-timestamp.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                target_info = archive.getinfo(target)
+                local_offset = target_info.header_offset
+                central_offset = archive.start_dir
+            raw_archive = bytearray(zip_path.read_bytes())
+            target_central_offset = find_central_entry_offset(
+                raw_archive, central_offset, target
+            )
+            raw_archive[local_offset + 10 : local_offset + 14] = b"\x00" * 4
+            raw_archive[
+                target_central_offset + 12 : target_central_offset + 16
+            ] = b"\x00" * 4
+            zip_path.write_bytes(raw_archive)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"invalid package DOS timestamp: {target}", errors)
+
+    def test_skill_package_checker_rejects_noncanonical_extended_timestamps(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "invalid-timestamp-extra.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    info = zipfile.ZipInfo(name)
+                    if name == target:
+                        info.extra = b"UT\x00\x00"
+                    archive.writestr(info, b"")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            f"invalid local extended timestamp field: {target}", errors
+        )
+        self.assertIn(
+            f"invalid central extended timestamp field: {target}", errors
+        )
+
+    def test_skill_package_checker_rejects_adjusted_prefix_archives(self):
+        prefix = b"MZ-hidden-prefix\r\n"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "prefixed.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                central_offset = archive.start_dir
+            raw_archive = bytearray(zip_path.read_bytes())
+            cursor = central_offset
+            while raw_archive[cursor : cursor + 4] == b"PK\x01\x02":
+                filename_size = int.from_bytes(
+                    raw_archive[cursor + 28 : cursor + 30], "little"
+                )
+                extra_size = int.from_bytes(
+                    raw_archive[cursor + 30 : cursor + 32], "little"
+                )
+                comment_size = int.from_bytes(
+                    raw_archive[cursor + 32 : cursor + 34], "little"
+                )
+                local_offset = int.from_bytes(
+                    raw_archive[cursor + 42 : cursor + 46], "little"
+                )
+                raw_archive[cursor + 42 : cursor + 46] = (
+                    local_offset + len(prefix)
+                ).to_bytes(4, "little")
+                cursor += 46 + filename_size + extra_size + comment_size
+
+            eocd_offset = len(raw_archive) - PACKAGE_CHECK.END_OF_CENTRAL_DIRECTORY_SIZE
+            self.assertEqual(
+                raw_archive[eocd_offset : eocd_offset + 4], b"PK\x05\x06"
+            )
+            raw_archive[eocd_offset + 16 : eocd_offset + 20] = (
+                central_offset + len(prefix)
+            ).to_bytes(4, "little")
+            zip_path.write_bytes(prefix + raw_archive)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertTrue(
+            any("prefix, gap, overlap, or hidden local entry" in error for error in errors),
+            errors,
+        )
+
+    def test_skill_package_checker_rejects_per_entry_nonzero_disk(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "entry-on-disk-one.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                central_offset = archive.start_dir
+            raw_archive = bytearray(zip_path.read_bytes())
+            target_central_offset = find_central_entry_offset(
+                raw_archive, central_offset, target
+            )
+            raw_archive[
+                target_central_offset + 34 : target_central_offset + 36
+            ] = (1).to_bytes(2, "little")
+            zip_path.write_bytes(raw_archive)
+            with zipfile.ZipFile(zip_path) as archive:
+                self.assertEqual(archive.getinfo(target).volume, 1)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "central directory entry starts on a nonzero disk", errors
+        )
+
+    def test_skill_package_checker_rejects_trailing_archive_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "trailing-data.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+            with zip_path.open("ab") as stream:
+                stream.write(b"hidden trailing bytes")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertTrue(any("trailing data" in error for error in errors), errors)
+
+    def test_skill_package_checker_checks_actual_deflate_size(self):
+        target = "watchlist-md/SKILL.md"
+        payload = b"X" * (PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE + 1)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "declared-small.zip"
+            with zipfile.ZipFile(
+                zip_path, "w", compression=zipfile.ZIP_DEFLATED
+            ) as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, payload if name == target else b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                target_info = archive.getinfo(target)
+                local_offset = target_info.header_offset
+                central_offset = archive.start_dir
+            raw_archive = bytearray(zip_path.read_bytes())
+            target_central_offset = find_central_entry_offset(
+                raw_archive, central_offset, target
+            )
+
+            declared_crc = PACKAGE_CHECK.zlib.crc32(b"X") & 0xFFFFFFFF
+            raw_archive[local_offset + 14 : local_offset + 18] = declared_crc.to_bytes(
+                4, "little"
+            )
+            raw_archive[local_offset + 22 : local_offset + 26] = (1).to_bytes(
+                4, "little"
+            )
+            raw_archive[
+                target_central_offset + 16 : target_central_offset + 20
+            ] = declared_crc.to_bytes(4, "little")
+            raw_archive[
+                target_central_offset + 24 : target_central_offset + 28
+            ] = (1).to_bytes(4, "little")
+            zip_path.write_bytes(raw_archive)
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            f"actual package payload exceeds {PACKAGE_CHECK.MAX_ARCHIVE_FILE_SIZE} bytes: {target}",
+            errors,
+        )
+
+    def test_skill_package_checker_bounds_archive_parser_work(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_count_path = Path(tmpdir) / "too-many-entries.zip"
+            with zipfile.ZipFile(entry_count_path, "w") as archive:
+                for index in range(PACKAGE_CHECK.MAX_ARCHIVE_PARSER_ENTRY_COUNT + 1):
+                    archive.writestr(f"watchlist-md/extra-{index}.txt", b"")
+            entry_errors = PACKAGE_CHECK.validate_package(entry_count_path)
+
+            oversized_path = Path(tmpdir) / "oversized-archive.zip"
+            with oversized_path.open("wb") as stream:
+                stream.truncate(PACKAGE_CHECK.MAX_ARCHIVE_SIZE + 1)
+            size_errors = PACKAGE_CHECK.validate_package(oversized_path)
+
+        self.assertIn(
+            "package archive declares more than "
+            f"{PACKAGE_CHECK.MAX_ARCHIVE_PARSER_ENTRY_COUNT} entries",
+            entry_errors,
+        )
+        self.assertEqual(
+            size_errors,
+            [f"package archive exceeds {PACKAGE_CHECK.MAX_ARCHIVE_SIZE} bytes"],
+        )
+
+    def test_skill_package_checker_rejects_unsupported_creator_systems(self):
+        target = "watchlist-md/SKILL.md"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "unsupported-creator.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    info = zipfile.ZipInfo(name)
+                    info.create_system = 10 if name == target else 0
+                    archive.writestr(info, b"")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(f"package entry must be a regular file: {target}", errors)
+
+    def test_skill_package_checker_rejects_unexpected_but_safe_directories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "unexpected-directory.zip"
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, "")
+                archive.writestr("watchlist-md/transcripts/", "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "unexpected package directory entry(s): watchlist-md/transcripts/",
+            errors,
+        )
+
     def test_skill_package_checker_rejects_python_family_runtime_artifacts(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             zip_path = Path(tmpdir) / "bad-python-package.zip"
@@ -1357,10 +2219,35 @@ timezone: Asia/Seoul
                     "watchlist-md/assets/",
                     "watchlist-md/references/",
                 ]:
-                    archive.writestr(name, "")
+                    archive.writestr(safe_directory_info(name), "")
                 for name in PACKAGE_CHECK.REQUIRED_FILES:
                     archive.writestr(name, "")
 
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertEqual(errors, [])
+
+    def test_skill_package_checker_accepts_deflated_empty_directories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "deflated-directory-entries.zip"
+            with zipfile.ZipFile(
+                zip_path, "w", compression=zipfile.ZIP_DEFLATED
+            ) as archive:
+                for name in sorted(PACKAGE_CHECK.ALLOWED_DIRECTORIES):
+                    archive.writestr(
+                        safe_directory_info(name, zipfile.ZIP_DEFLATED), b""
+                    )
+                for name in PACKAGE_CHECK.REQUIRED_FILES:
+                    archive.writestr(name, b"")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                self.assertTrue(
+                    all(
+                        info.compress_size > 0
+                        for info in archive.infolist()
+                        if info.is_dir()
+                    )
+                )
             errors = PACKAGE_CHECK.validate_package(zip_path)
 
         self.assertEqual(errors, [])
@@ -1378,6 +2265,23 @@ timezone: Asia/Seoul
             errors = PACKAGE_CHECK.validate_package(zip_path)
 
         self.assertIn("duplicate package file(s): watchlist-md/SKILL.md", errors)
+
+    def test_skill_package_checker_rejects_duplicate_directory_entries(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = Path(tmpdir) / "duplicate-directory.zip"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(zip_path, "w") as archive:
+                    for name in PACKAGE_CHECK.REQUIRED_FILES:
+                        archive.writestr(name, "")
+                    archive.writestr("watchlist-md/agents/", "")
+                    archive.writestr("watchlist-md/agents/", "")
+
+            errors = PACKAGE_CHECK.validate_package(zip_path)
+
+        self.assertIn(
+            "duplicate package entry(s): watchlist-md/agents/", errors
+        )
 
     def test_skill_package_checker_reports_invalid_zip_without_traceback(self):
         with tempfile.TemporaryDirectory() as tmpdir:

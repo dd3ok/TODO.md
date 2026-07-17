@@ -20,7 +20,39 @@ watchlist-md/references/safety.md
 
 `evals/runtime_package_files.txt` is the machine-readable source of truth;
 `evals/check_skill_package.py` enforces it as an exact allowlist. Tests require
-this displayed list and both README lists to match the manifest.
+this displayed list and both README lists to match the manifest. Archive
+validation also rejects unsafe paths, unexpected directories, encrypted entries,
+symlinks, other non-regular file types, oversized contents, and corrupt payloads.
+The safety ceiling is 2 MiB per entry and 8 MiB total uncompressed content, plus
+3 MiB per entry and 12 MiB total declared compressed content. The archive itself
+must be at most 16 MiB and its central directory at most 64 KiB. Actual stored or
+deflated payload size and CRC are checked independently of declared metadata.
+Directory entries must have zero uncompressed content; a valid deflated-empty
+stream is allowed. The exact seven files plus their optional manifest-derived
+ancestor directories allow no more than 11 entries. Parser preflight also
+rejects an archive declaring more than 64 entries. Entries must
+use standard Unix or DOS creator metadata; Unix type bits and the DOS directory
+bit must agree with the entry path regardless of creator label. Explicit Unix
+modes must make files owner-readable and directories owner-readable/searchable;
+special permission bits and hidden, system, or reserved DOS attributes are not
+allowed. Source-tree manifest membership and uncompressed sizes are checked
+before temporary packaging; symbolic links, reparse points, and
+special files are rejected without being followed. Hard-linked regular files are
+copied as ordinary bytes and are allowed. Raise a limit deliberately with tests
+and documentation if the runtime bundle ever needs to grow beyond it.
+
+The archive and every central entry must use disk zero in a canonical single-disk
+layout with no executable/SFX prefix, gaps, overlaps, hidden local entries, ZIP64
+or other unsupported records, archive comment, or trailing data. Local and
+central ZIP headers must agree on filename, extra fields, extraction version,
+DOS modification date/time, flags, compression method, CRC, and sizes. Extraction
+version 1.0 or 2.0 is required. The only accepted extra-field type, if present,
+is one canonical extended timestamp field (`0x5455`) containing the
+modification-time flag and one four-byte time; alternate-path, encryption, and
+platform-specific override fields are rejected in both headers. Entries use no
+general-purpose flags, use only stored or deflate compression, and carry no entry
+comments. Untrusted entry names and parser errors are escaped and length-bounded
+before they are printed to a terminal or CI log.
 
 Repository-only files must stay outside `.agents/skills/watchlist-md/`: `tools/`,
 `evals/`, `.github/`, `.watchlist/`, `docs/`, examples, smoke notes, release notes,

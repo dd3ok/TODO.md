@@ -8,6 +8,15 @@
   so the same Git/platform toolchain produces committed bytes and a stable
   SHA-256 across invocation times and host configurations, with toolchain limits
   documented.
+- Rejected unsafe or normalized ZIP paths, unexpected directories, encrypted or
+  oversized entries, symlinks, other non-regular file types, and corrupt payloads
+  or conflicting local-header metadata during archive validation. Canonical
+  layout checks also reject ambiguous prefixes, gaps, hidden records, trailing
+  data, unsafe permissions, unsupported extraction versions, timestamp/header
+  conflicts, and metadata that understates actual deflated content. Untrusted
+  diagnostic fields are escaped and bounded. Temporary source packaging now
+  rejects symbolic links, reparse points, special files, unexpected paths, and
+  oversized inputs before reading file payloads.
 
 ## [0.4.2] - 2026-07-17
 
