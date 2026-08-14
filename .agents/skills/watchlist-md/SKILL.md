@@ -59,9 +59,13 @@ timezone: Asia/Seoul
 ## Done
 ```
 
-Allow only the required sections and an optional `## Archive` section. Resolve a
-new file's timezone from an explicit user timezone, then the environment/user
-timezone, then `Asia/Seoul`.
+Allow only the required sections and an optional `## Archive` section. For a new
+file, resolve and persist its timezone from an explicit user timezone, then the
+environment/user timezone, then `Asia/Seoul`. For an existing file, treat its
+timezone as authoritative for unqualified calendar terms, `created_at`, the ID
+date, and review buckets. Honor a timezone explicitly attached to a requested
+due time. If the existing file's timezone cannot be resolved, stop instead of
+silently falling back to the environment timezone.
 
 Write items in this shape:
 
@@ -85,8 +89,8 @@ information; keep other human-readable fields intact.
 Before writing, resolve time and re-read the selected target immediately before
 the edit. When either standard workspace target is selected, also read the other
 standard target if it exists and scan IDs across both files. For any other
-explicit path, scan only the selected file. Generate the ID from the local date
-of `created_at` and choose the next unused `001`-`999` sequence in the scanned
+explicit path, scan only the selected file. Generate the ID from the file-local
+date of `created_at` and choose the next unused `001`-`999` sequence in the scanned
 set. Stop on duplicate IDs or exhausted sequences. Insert the smallest possible
 block under `## Open`.
 
@@ -102,8 +106,8 @@ item is recorded for explicit review when scheduling expectations are ambiguous.
 
 ## Review or transition
 
-Keep list-only reviews read-only. Group active items by overdue, due today,
-upcoming, and unscheduled; mark blocked items in their group.
+Keep list-only reviews read-only. Group active items by file-local overdue, due
+today, upcoming, and unscheduled; mark blocked items in their group.
 
 When a check or status transition is performed, update `last_checked_at` and
 `result`:

@@ -358,6 +358,7 @@ class RepositoryContractTests(unittest.TestCase):
             "private-tracked-conflict",
             "add-shared-explicit",
             "review-read-only",
+            "existing-timezone-authoritative",
             "reschedule-only",
             "reschedule-blocked-preserves-state",
             "reschedule-terminal-confirms-reopen",

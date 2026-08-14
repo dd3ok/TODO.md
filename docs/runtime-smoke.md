@@ -18,11 +18,11 @@ revision.
 
 | Runtime | D/E/B/R | Runtime/model/OS/config | Source revision | Overall | Date | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| Codex CLI 0.147.0 | pass/pass/pass/pass | `gpt-5.6-sol`; native Windows; ephemeral, user config and rules ignored, automatic approval review; unrelated app/browser/computer-use/image/multi-agent/hook features disabled | Runtime bundle SHA-256 `60b942a7c8ed4a7f3298c7e8164d50edc82a131a362a5de8a9452b850c85b248` | pending | 2026-08-14 | A sandboxed local core run covered discovery, explicit invocation, explicit and implicit private add, full read-only review, user-reported completion, duplicate-ID stop, unsupported-schema stop, and both generic negative-routing cases. Changed files passed the repository validator; the review file's Git blob stayed unchanged; stop cases left files and Git metadata unchanged. No sandbox bypass was used. |
+| Codex CLI 0.147.0 | pass/pass/pass/pass | `gpt-5.6-sol`; native Windows; ephemeral, user config and rules ignored, automatic approval review; unrelated app/browser/computer-use/image/multi-agent/hook features disabled | Runtime bundle SHA-256 `feb95262949498689ab4d3e4baec255489858ed061bb118abbe187f08e917584` | pending | 2026-08-14 | Corpus IDs: `add-private-default`, `existing-timezone-authoritative`, `review-read-only`, `complete-user-reported`, `cross-target-duplicate-stop`, `unsupported-schema-stops-before-side-effects`, `negative-generic-reminder`, and `negative-generic-lifecycle`. Ad hoc: discovery and explicit `$watchlist-md` invocation. Changed files passed the repository validator; the review file's SHA-256 stayed unchanged; stop cases left files and Git metadata unchanged. No sandbox bypass was used. |
 
 The four evidence codes passed for that exact core run. Overall remains pending
-because the other cases in `evals/smoke_cases.json` were not run; this row does
-not claim full-corpus coverage.
+because the other 12 cases in `evals/smoke_cases.json` were not run; this row
+does not claim full-corpus coverage.
 
 The bundle digest is SHA-256 over the runtime files in ordinal relative-path
 order, appending each UTF-8 relative path, a NUL byte, the raw file bytes, and a

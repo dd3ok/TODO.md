@@ -70,6 +70,12 @@ optional. `last_checked_at` and `result` become required for `blocked`, `done`,
 and `dropped` items. `## Archive` is optional and accepts only explicitly
 archived `done` or `dropped` items.
 
+An existing file's `timezone` governs unqualified calendar terms, the local date
+used by `created_at` and the item ID, and review groupings such as due today. A
+timezone explicitly attached to a requested due time is honored for that due
+time. The skill stops instead of silently using the host timezone when an
+existing file's timezone cannot be resolved.
+
 Rescheduling preserves an active item's `open` or `blocked` status. Rescheduling
 a `done` or `dropped` item requires confirmation to reopen it.
 
@@ -87,9 +93,9 @@ python -B tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLI
 ```
 
 The tests validate the deterministic file and package interfaces, including
-skill metadata. A sandboxed local core runtime run passed discovery, explicit and
-implicit invocation, add, read-only review, completion, generic negative routing,
-and pre-write stops for duplicate IDs and unsupported schemas. The full manual
-corpus remains pending; scope, configuration, evidence, and the separately
-labeled historical observation are in
+skill metadata. A sandboxed local core runtime run passed discovery, explicit
+invocation, add, existing-file timezone handling, read-only review, completion,
+generic negative routing, and pre-write stops for duplicate IDs and unsupported
+schemas. The full manual corpus remains pending; scope, configuration, evidence,
+and the separately labeled historical observation are in
 [runtime smoke checks](docs/runtime-smoke.md).

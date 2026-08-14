@@ -44,6 +44,11 @@
   during validation.
 - Clarified manual private-file fixtures as untracked and ignored, and removed an
   ambiguous today-only prompt from the full-review runtime case.
+- Made an existing file's timezone authoritative for relative calendar terms,
+  item dates, and review buckets, with no silent host-timezone fallback.
+- Recorded exact runtime corpus IDs separately from ad hoc discovery and routing
+  checks.
+- Made the private-add runtime case independent of the execution time of day.
 
 ### Removed
 

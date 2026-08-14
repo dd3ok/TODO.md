@@ -2,7 +2,7 @@
   {
     "id": "add-private-default",
     "setup": "Use a Git worktree with neither standard target present; .watchlist is untracked and not ignored.",
-    "prompt": "WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.",
+    "prompt": "WATCHLIST.md에 추가해줘. 내일 17:00에 GitHub Actions 결과 확인.",
     "observe": [
       "adds only /.watchlist/WATCHLIST.md to the repository-local Git exclude and verifies the target is ignored",
       "creates .watchlist/WATCHLIST.md with schema_version 2",
@@ -36,6 +36,16 @@
     "observe": [
       "groups active items by due time and marks blocked items",
       "does not modify the file"
+    ]
+  },
+  {
+    "id": "existing-timezone-authoritative",
+    "setup": "On a host using Asia/Seoul, an untracked, ignored schema-v2 private watchlist uses America/New_York and contains no items.",
+    "prompt": "WATCHLIST.md에 내일 10시 배포 확인을 추가해줘.",
+    "observe": [
+      "interprets tomorrow in the existing file's America/New_York timezone",
+      "uses the file-local created_at date for the new ID",
+      "preserves the file timezone and does not fall back to the host timezone"
     ]
   },
   {

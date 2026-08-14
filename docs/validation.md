@@ -24,7 +24,9 @@ The validator checks:
 
 It intentionally does not enforce item-field order, reject additional
 human-readable item fields, resolve timezone names against host data, or parse
-arbitrary Markdown. Credential patterns and tokenized URLs fail validation.
+arbitrary Markdown. The skill, rather than this dependency-free validator, uses
+an existing file's timezone for calendar semantics and stops when the runtime
+cannot resolve it. Credential patterns and tokenized URLs fail validation.
 
 `evals/smoke_cases.json` is a manual runtime corpus, not an automated behavior
 test. Unit tests prove the deterministic file and package interfaces, skill
