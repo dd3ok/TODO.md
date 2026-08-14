@@ -1,9 +1,10 @@
 # Security
 
 `WATCHLIST.md` stores Markdown notes in the selected local or repository file; it
-is not a remote storage service. The file should not contain credentials, tokens,
-cookies, private keys, signed URLs, raw logs, raw emails, private dashboard
-excerpts, or sensitive personal data.
+is not a remote storage service. An untracked private target is not encrypted or
+access-controlled. The file should not contain credentials, tokens, cookies,
+private keys, signed URLs, raw logs, raw emails, private dashboard excerpts, or
+sensitive personal data.
 
 If sensitive content is added to a watchlist entry:
 

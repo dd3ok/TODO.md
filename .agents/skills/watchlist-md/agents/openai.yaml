@@ -1,4 +1,4 @@
 interface:
   display_name: "WATCHLIST.md"
-  short_description: "Track deferred checks and 후속 체크 in WATCHLIST.md"
-  default_prompt: "Use $watchlist-md to record a deferred CI check in WATCHLIST.md and report its ID, due_at, and scheduler status."
+  short_description: "Record and review deferred checks"
+  default_prompt: "Use $watchlist-md to record a deferred check in the appropriate WATCHLIST.md and report its ID and due time."

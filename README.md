@@ -1,84 +1,95 @@
 # WATCHLIST.md
 
-[![Maintainer checks: Python 3.8+](https://img.shields.io/badge/maintainer_checks-Python_3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/dd3ok/WATCHLIST.md)](https://github.com/dd3ok/WATCHLIST.md/blob/main/LICENSE)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dd3ok/WATCHLIST.md/ci.yml?branch=main)](https://github.com/dd3ok/WATCHLIST.md/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/dd3ok/WATCHLIST.md)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/dd3ok/WATCHLIST.md/ci.yml?branch=main)](https://github.com/dd3ok/WATCHLIST.md/actions/workflows/ci.yml)
 
-[Korean README](README.ko.md)
+[한국어](README.ko.md)
 
-`WATCHLIST.md` is a lightweight **AI Agent Skill** and AgentSkills-compatible Markdown workflow for recording deferred checks. It is designed for Codex, Claude Code, Google Antigravity directory-based Agent Skills surfaces, Kilo, OpenClaw, Hermes, and Gemini CLI with Gemini Code Assist Standard/Enterprise or paid Gemini/Enterprise Agent Platform API keys. It tracks CI follow-ups, deployment verification, PR checks, tickets, jobs, data syncs, and emails without creating a scheduler, daemon, database, or MCP server. Documented format and path compatibility is separate from real runtime verification; see the pending rows in the runtime smoke matrix.
+`watchlist-md` is a small Agent Skill for recording checks that must be reviewed
+later. It writes Markdown notes; it does not wake up, poll, notify, or run work in
+the background.
 
-It is not an autonomous scheduler, reminder service, daemon, database, cron job, UI, or background worker. It records what should be checked later; it does not wake up, poll, notify, or run checks by itself.
+## Install
 
-## Quickstart
-
-Install the skill directory:
+Install the skill directory, not the repository root:
 
 ```text
 $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents/skills/watchlist-md
 ```
 
-Then ask an agent:
+Then ask:
 
 ```text
-Add this to WATCHLIST.md. Check GitHub Actions results today at 17:00.
+Add this to WATCHLIST.md. Check GitHub Actions today at 17:00.
 ```
 
-Validate a watchlist file from this source repo:
+For manual installation, copy `.agents/skills/watchlist-md` into a skill directory
+supported by your agent runtime. See [installation](docs/install.md).
+
+## What it keeps
+
+- a `WL-YYYYMMDD-NNN` ID unique across the two standard workspace targets
+- an absolute due time or `unscheduled`
+- a safe source pointer, action, and observable completion condition
+- explicit `open`, `blocked`, `done`, or `dropped` state
+- review evidence when an item is checked or closed
+
+It keeps private watchlists in `.watchlist/WATCHLIST.md` by default. In Git
+worktrees, the skill keeps that path untracked through a repository-local Git
+exclude. A root `WATCHLIST.md` is shared state only when the user explicitly
+chooses that scope. “Private” here means local and untracked, not encrypted or
+access-controlled.
+
+The skill does not store secrets, raw private content, or credential-bearing
+links. It does not turn a note into authorization for deployment, payment,
+messaging, or another high-impact action.
+
+## Schema v2
+
+```md
+# WATCHLIST.md
+
+schema_version: 2
+timezone: Asia/Seoul
+
+## Open
+
+### WL-20260813-001 - Check CI
+- status: open
+- due_at: 2026-08-13T17:00:00+09:00
+- created_at: 2026-08-13T16:30:00+09:00
+- source: PR #123
+- action: Check GitHub Actions
+- done_when: All jobs pass or the failure is recorded
+
+## Done
+```
+
+`priority` is optional and, when present, uses `P0` through `P3`; `owner` is also
+optional. `last_checked_at` and `result` become required for `blocked`, `done`,
+and `dropped` items. `## Archive` is optional and accepts only explicitly
+archived `done` or `dropped` items.
+
+Rescheduling preserves an active item's `open` or `blocked` status. Rescheduling
+a `done` or `dropped` item requires confirmation to reopen it.
+
+Only schema v2 is supported. The skill does not interpret or migrate other
+schemas.
+
+## Development
+
+The runtime bundle is Python-free. Repository checks use only the standard
+library:
 
 ```bash
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md
+python -B -m unittest discover -s evals -p 'test_*.py'
+python -B tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 ```
 
-## Skill Directory
-
-Install or copy the skill directory whose root contains `SKILL.md`, not the repository root:
-
-```text
-.agents/skills/watchlist-md
-```
-
-The runtime bundle contains the skill instructions, license notice, template, OpenAI metadata, and compact references:
-
-```text
-.agents/skills/watchlist-md/SKILL.md
-.agents/skills/watchlist-md/LICENSE.txt
-.agents/skills/watchlist-md/assets/WATCHLIST.template.md
-.agents/skills/watchlist-md/agents/openai.yaml
-.agents/skills/watchlist-md/references/format.md
-.agents/skills/watchlist-md/references/lifecycle.md
-.agents/skills/watchlist-md/references/safety.md
-```
-
-Repository-only checks, examples, and maintainer docs stay outside the installable skill directory.
-
-## What It Does / Does Not Do
-
-Use WATCHLIST.md when an agent needs to record a later check for CI, deployment, PR, ticket, job, data sync, order, payment, or email follow-up.
-
-It supports add, review, complete, blocked, snoozed, dropped, explicit delete, and explicit archive workflows as Markdown edits.
-
-It does not:
-
-- run checks automatically
-- send reminders or wakeups
-- replace issue trackers, incident systems, or project management tools
-- store secrets, signed URLs, raw logs, raw emails, or private excerpts
-- access private systems without explicit permission and configured access
-
-## Runtime Weight
-
-The installable runtime skill stays Python-free. Agents edit Markdown directly from the skill contract; this source repository keeps deterministic validation in `tools/validate_watchlist.py` and `evals/`.
-
-Do not add a CLI, MCP server, browser automation, bundled validator, smoke transcript, screenshot, or long eval corpus to `.agents/skills/watchlist-md/`.
-
-Use each vendor's documented discovery path or install flow. Format/path compatibility does not count as a runtime smoke pass; install details and the pending verification matrix are in `docs/install.md` and `docs/runtime-smoke.md`.
-
-## Docs
-
-- [Installation](docs/install.md): current vendor eligibility and discovery paths, Codex and Claude Code setup, and standalone zip packaging.
-- [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, and retention.
-- [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, and item format expectations.
-- [Runtime smoke](docs/runtime-smoke.md): compact vendor/runtime smoke matrix without transcripts or raw logs.
-- [Maintainer release checklist](docs/maintainers/release.md): package boundary, pre-PR, publish, and post-release checks.
-- [Maintainer self-checks](docs/maintainers/self-checks.md): canonical eval workflow and manual runtime boundary.
+The tests validate the deterministic file and package interfaces, including
+skill metadata. A sandboxed local core runtime run passed discovery, explicit and
+implicit invocation, add, read-only review, completion, generic negative routing,
+and pre-write stops for duplicate IDs and unsupported schemas. The full manual
+corpus remains pending; scope, configuration, evidence, and the separately
+labeled historical observation are in
+[runtime smoke checks](docs/runtime-smoke.md).

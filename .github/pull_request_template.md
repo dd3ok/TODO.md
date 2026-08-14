@@ -1,19 +1,14 @@
 ## Summary
 
-## Behavior Changes
+## Interface change
 
-- [ ] No skill behavior change
-- [ ] Skill behavior changed
+- [ ] No WATCHLIST interface change
+- [ ] Interface changed and public documentation was updated
 
-## Checklist
+## Checks
 
-- [ ] Updated `SKILL.md` if behavior changed
-- [ ] Updated `README.md` / `README.ko.md` if docs changed
-- [ ] Updated the template if the WATCHLIST format changed
-- [ ] Updated format / lifecycle / safety references if their contract changed
-- [ ] Updated storage/privacy and security docs if retention or redaction changed
-- [ ] Added or updated eval prompt cases if lifecycle behavior changed
-- [ ] Added or updated unit tests
-- [ ] Updated `VERSION` / `CHANGELOG.md` if release-relevant
-- [ ] Ran validator on starter and template
-- [ ] No secrets, tokens, raw logs, private excerpts, signed URLs, or tokenized URLs added
+- [ ] Updated the skill, template, validator, or smoke cases at its source of truth
+- [ ] Added or updated direct unit tests
+- [ ] Ran the unit suite and template validation
+- [ ] Did not report deterministic tests as runtime behavior
+- [ ] Added no secrets, raw private content, or credential-bearing URLs

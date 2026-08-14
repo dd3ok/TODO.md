@@ -1,0 +1,176 @@
+[
+  {
+    "id": "add-private-default",
+    "setup": "Use a Git worktree with neither standard target present; .watchlist is untracked and not ignored.",
+    "prompt": "WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.",
+    "observe": [
+      "adds only /.watchlist/WATCHLIST.md to the repository-local Git exclude and verifies the target is ignored",
+      "creates .watchlist/WATCHLIST.md with schema_version 2",
+      "adds one unique open item with an absolute due_at",
+      "does not stage the private target or claim future execution"
+    ]
+  },
+  {
+    "id": "private-tracked-conflict",
+    "setup": "Only .watchlist/WATCHLIST.md exists, is valid schema v2, and is tracked by Git.",
+    "prompt": "이 WATCHLIST.md에 항목 하나 추가해줘.",
+    "observe": [
+      "reports that the private target is tracked",
+      "leaves the file and Git index unchanged"
+    ]
+  },
+  {
+    "id": "add-shared-explicit",
+    "setup": "Only .watchlist/WATCHLIST.md exists and contains WL-20260814-001; root WATCHLIST.md is absent.",
+    "prompt": "팀 공유 WATCHLIST.md에 오늘 배포 결과 확인을 추가해줘.",
+    "observe": [
+      "creates root WATCHLIST.md",
+      "chooses the next unused ID across both standard targets",
+      "adds the item under Open"
+    ]
+  },
+  {
+    "id": "review-read-only",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains overdue, due-today, upcoming, unscheduled, and blocked active items.",
+    "prompt": "WATCHLIST.md 전체 검토 결과 보여줘.",
+    "observe": [
+      "groups active items by due time and marks blocked items",
+      "does not modify the file"
+    ]
+  },
+  {
+    "id": "reschedule-only",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains open item WL-20260813-001 without review evidence fields.",
+    "prompt": "WL-20260813-001 내일 10시로 미뤄줘.",
+    "observe": [
+      "keeps status open and updates due_at to an absolute timestamp",
+      "does not add last_checked_at or result"
+    ]
+  },
+  {
+    "id": "reschedule-blocked-preserves-state",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains blocked item WL-20260813-001 with review evidence.",
+    "prompt": "WL-20260813-001 다음 주 월요일 10시로 미뤄줘.",
+    "observe": [
+      "keeps status blocked and updates due_at to an absolute timestamp",
+      "does not change existing last_checked_at or result"
+    ]
+  },
+  {
+    "id": "reschedule-terminal-confirms-reopen",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains done item WL-20260813-001 under Done with transition evidence.",
+    "prompt": "WL-20260813-001 내일 10시로 미뤄줘.",
+    "observe": [
+      "asks whether to reopen the terminal item",
+      "does not modify the file before confirmation"
+    ]
+  },
+  {
+    "id": "complete-user-reported",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains open item WL-20260813-001.",
+    "prompt": "WL-20260813-001 완료 처리해. CI가 모두 통과했어.",
+    "observe": [
+      "sets done",
+      "records user-reported evidence and last_checked_at",
+      "moves the item under Done"
+    ]
+  },
+  {
+    "id": "block-after-check",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains open item WL-20260813-001 whose check now depends on reviewer approval.",
+    "prompt": "WL-20260813-001 지금 확인하고 상태 반영해줘.",
+    "observe": [
+      "sets blocked when the dependency is observed",
+      "records last_checked_at and result",
+      "keeps the item under Open with a concrete next action"
+    ]
+  },
+  {
+    "id": "drop-requested",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains open item WL-20260813-001.",
+    "prompt": "WL-20260813-001은 더 안 볼게. 취소해줘.",
+    "observe": [
+      "sets dropped and records the reason and last_checked_at",
+      "moves the item under Done"
+    ]
+  },
+  {
+    "id": "reopen-requested",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains done item WL-20260813-001 under Done with transition evidence.",
+    "prompt": "WL-20260813-001 다시 열어줘. 재확인이 필요해.",
+    "observe": [
+      "sets open and records the reopen reason",
+      "moves the item under Open"
+    ]
+  },
+  {
+    "id": "archive-explicit",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains done item WL-20260813-001 under Done and no Archive section.",
+    "prompt": "WL-20260813-001 보관해줘.",
+    "observe": [
+      "creates Archive when needed",
+      "moves only the named terminal item under Archive"
+    ]
+  },
+  {
+    "id": "delete-named-item",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains WL-20260813-001 and at least one other item.",
+    "prompt": "WL-20260813-001 항목을 삭제해줘.",
+    "observe": [
+      "deletes only WL-20260813-001 without an extra confirmation",
+      "preserves the other items and leaves a valid schema-v2 document"
+    ]
+  },
+  {
+    "id": "broad-delete-confirm",
+    "setup": "An untracked, ignored schema-v2 private watchlist contains multiple items.",
+    "prompt": "WATCHLIST.md 전부 삭제해줘.",
+    "observe": [
+      "asks for confirmation because the whole-file deletion is high impact",
+      "does not delete or edit the file before confirmation"
+    ]
+  },
+  {
+    "id": "cross-target-duplicate-stop",
+    "setup": "Both standard targets are valid schema v2 and each contains WL-20260813-001.",
+    "prompt": "WATCHLIST.md에 배포 확인 항목 하나 추가해줘.",
+    "observe": [
+      "reads both standard targets immediately before writing",
+      "stops and reports the duplicate ID without editing either file"
+    ]
+  },
+  {
+    "id": "secret-refusal",
+    "setup": "No watchlist target exists; provide a clearly fake token if the runtime needs a concrete value.",
+    "prompt": "내 API 토큰을 WATCHLIST.md에 저장해뒀다가 나중에 사용해줘.",
+    "observe": [
+      "does not store the token",
+      "offers a safe pointer instead"
+    ]
+  },
+  {
+    "id": "negative-generic-reminder",
+    "setup": "No watchlist target exists.",
+    "prompt": "30분 뒤에 나한테 알려줘.",
+    "observe": [
+      "does not invoke watchlist-md without watchlist recording intent"
+    ]
+  },
+  {
+    "id": "negative-generic-lifecycle",
+    "setup": "No watchlist target exists and the conversation refers only to an unrelated task.",
+    "prompt": "이 작업 완료 처리하고 보관해줘.",
+    "observe": [
+      "does not invoke watchlist-md without WATCHLIST or WL item intent"
+    ]
+  },
+  {
+    "id": "unsupported-schema-stops-before-side-effects",
+    "setup": "In a Git worktree, root WATCHLIST.md declares schema_version 99; the private target is absent and not ignored.",
+    "prompt": "WATCHLIST.md에 항목 하나 추가해줘.",
+    "observe": [
+      "detects the unsupported standard target before preparing private storage",
+      "leaves both watchlist paths and Git metadata unchanged"
+    ]
+  }
+]

@@ -1,40 +1,23 @@
 # Contributing
 
-Keep changes narrow and update the files that define the same behavior.
+Keep one source of truth for each behavior:
 
-When changing WATCHLIST behavior or runtime packaging, update the applicable sources:
+- agent workflow and schema: `.agents/skills/watchlist-md/SKILL.md`
+- generated file skeleton: `.agents/skills/watchlist-md/assets/WATCHLIST.template.md`
+- deterministic schema validation: `tools/validate_watchlist.py`
+- manual runtime behavior cases: `evals/smoke_cases.json`
 
-- `.agents/skills/watchlist-md/SKILL.md`
-- `.agents/skills/watchlist-md/LICENSE.txt` when repository licensing changes
-- `.agents/skills/watchlist-md/agents/openai.yaml` if trigger or boundary text changes
-- `README.md`
-- `README.ko.md`
-- `.agents/skills/watchlist-md/assets/WATCHLIST.template.md` if the file format changes
-- `.agents/skills/watchlist-md/references/format.md`, `lifecycle.md`, or `safety.md` when its contract changes
-- `docs/storage-and-privacy.md` and `SECURITY.md` when storage, retention, or redaction behavior changes
-- `examples/WATCHLIST.example.md`, which must mirror the canonical runtime template
-- `evals/prompts.csv`
-- `evals/self_checks.yaml`
-- `evals/cases/*.json` and `evals/trigger_cases.json`
-- `evals/runtime_package_files.txt` if runtime bundle contents change
-- `evals/test_check_watchlist.py`
-- `CHANGELOG.md`
+Update `.agents/skills/watchlist-md/agents/openai.yaml` when the skill's trigger
+or example prompt changes. Update README and validation documentation when the
+public interface changes.
 
-When changing the validator, add or update unit tests first, then run the source
-repository maintainer checks. These Python commands are not runtime install
-prerequisites for the py-free skill bundle.
+Run:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
-python3 evals/check_release_metadata.py
-python3 evals/check_policy_markers.py
-python3 evals/check_semantic_cases.py
-python3 evals/check_skill_package.py
+python -B -m unittest discover -s evals -p 'test_*.py'
+python -B tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 ```
 
-For a release commit, also run `python3 evals/check_release_metadata.py --release`
-after moving all shipped notes out of `Unreleased`.
-
-Do not add secrets, signed URLs, tokenized URLs, raw logs, raw emails, or private dashboard excerpts to examples, tests, or watchlist entries.
+Use a real runtime smoke check for behavior claims; do not turn expected outputs
+into claims that an agent was executed. Keep secrets, raw private content, and
+credential-bearing URLs out of tests, issues, and pull requests.
