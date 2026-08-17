@@ -1,73 +1,38 @@
 # Validation
 
-This repository keeps deterministic checks outside the installable runtime skill. The runtime skill edits Markdown directly; maintainers use the scripts here before merging changes.
-
-Run the standard checks:
+The installed skill edits Markdown without Python. This source repository keeps a
+standard-library validator for the deterministic schema-v2 interface.
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s evals -p 'test_*.py'
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md
-python3 evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-python3 tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
-python3 evals/check_release_metadata.py
-python3 evals/check_policy_markers.py
-python3 evals/check_semantic_cases.py
-python3 evals/check_skill_package.py
+python -B -m unittest discover -s evals -p 'test_*.py'
+python -B tools/validate_watchlist.py path/to/WATCHLIST.md
+python -B tools/validate_watchlist.py path/to/WATCHLIST.md --json
 ```
 
-`evals/cases/*.json` is the canonical deterministic operation-contract corpus.
-`evals/prompts.csv` and `evals/self_checks.yaml` mirror its IDs and prompts for
-manual runs. Their expected fields are manual expectations, not executed agent
-assertions; `expected.should_trigger_skill`, when present in YAML, is cross-checked
-for routing parity.
-`evals/trigger_cases.json` is a small prompt-routing contract corpus.
-For semantic operation cases, `should_trigger_skill` is the declared intent;
-mentioning WATCHLIST is not automatically positive when the prompt explicitly
-rejects using it. Prompt-only routing exceptions use named trigger reasons.
+The validator checks:
 
-The evaluation contract linter (`evals/check_semantic_cases.py`) checks corpus
-shape, prompt/trigger alignment, declared contract rules, and fixture validity.
-It does not run an LLM, agent, browser, network call, or runtime integration.
-`fixed_now` is validated as data but is not injected into an agent. A passing
-lint therefore must not be reported as an agent-behavior or runtime smoke pass.
-To stay dependency-free, `self_checks.yaml` is checked against the limited YAML
-structure used by this repository. The checker tracks mapping/sequence parents
-and rejects children under scalar values; it does not accept arbitrary YAML.
+- the closed top-level schema (`schema_version` and `timezone`), required
+  sections, and optional `Archive` section
+- item IDs, calendar dates, sequence range, and duplicate IDs
+- the canonical `### WL-YYYYMMDD-NNN - Title` heading
+- required populated fields, section-bounded item bodies, and supported states
+- non-empty structured optional fields and `priority` values from `P0` through
+  `P3`
+- ISO-8601 timestamps with offsets
+- state-to-section placement and transition evidence
+- common credential and token patterns
 
-## Item Format
+It intentionally does not enforce item-field order, reject additional
+human-readable item fields, resolve timezone names against host data, or parse
+arbitrary Markdown. The skill, rather than this dependency-free validator, uses
+an existing file's timezone for calendar semantics and stops when the runtime
+cannot resolve it. Credential patterns and tokenized URLs fail validation.
 
-### Example Item
+`evals/smoke_cases.json` is a manual runtime corpus, not an automated behavior
+test. Unit tests prove the deterministic file and package interfaces, skill
+metadata, and CLI behavior. Record actual agent discovery, invocation, edits,
+and routing separately in `docs/runtime-smoke.md`.
 
-```md
-### WL-20260507-001 — Check error logs after deployment
-- status: open
-- priority: P1
-- owner: assistant_on_review
-- due_at: 2026-05-07T17:30:00+09:00
-- created_at: 2026-05-07T17:00:00+09:00
-- source: conversation note
-- trigger: Deployment just started, so the result cannot be checked yet
-- action: Check error logs after deployment
-- done_when: No new errors are present, or the error cause and next action are recorded
-- last_checked_at:
-- result:
-- next_step_on_fail: Summarize the logs and confirm whether the user wants a fix
-```
-
-The validator requires every field key. Default mode reports field-order drift as
-a warning; `--strict-format` promotes it to an error. For an open item, only
-`last_checked_at` and `result` are normally left blank.
-
-The legacy WATCHLIST top-level field `mode` is accepted only for compatibility and
-emits `DEPRECATED_MODE_FIELD`; it has no behavior and should be removed.
-
-Required values for open items are `status`, `priority`, `owner`, `due_at`, `created_at`, `source`, `trigger`, `action`, and `done_when`. Recommended when known: `next_step_on_fail`. Normally blank until checked: `last_checked_at` and `result`.
-
-`owner` means who should act during the next explicit WATCHLIST review. It does not mean the assistant will wake up automatically.
-
-## Strict Safety
-
-`--strict-safety` is intentionally conservative. It escalates heuristic findings such as signed or tokenized-looking URLs to errors for shared/team templates; review false positives and prefer safe pointers instead of copying sensitive links into WATCHLIST.md.
-
-Use `.agents/skills/watchlist-md/references/format.md`, `lifecycle.md`, and `safety.md` for runtime-facing manual guidance. Use this file for source-repository maintainer validation.
+The validator accepts schema v2 only and does not interpret or rewrite other
+schemas. It validates one document at a time; the skill checks ID uniqueness
+across both standard workspace targets before an edit.

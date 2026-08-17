@@ -2,21 +2,69 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Adopted a single schema-v2 contract.
+- Reduced required item fields to status, due time, creation time, source, action,
+  and completion condition; optional fields are written only when informative.
+- Replaced `snoozed` with rescheduling that preserves an active item's status and
+  removed automatic archive-suggestion policy.
+- Consolidated runtime instructions into one source of truth and reduced the
+  installable bundle from seven files to four.
+- Reworked validator tests to call the pure validation interface directly; only
+  CLI behavior uses subprocess smoke tests.
+- Reduced CI to the current Python release because Python is maintainer tooling,
+  not a runtime dependency.
+- Clarified that a bare `WATCHLIST.md` mention names the format rather than the
+  shared root path, and required checking both standard targets before selection.
+- Added explicit manual-smoke setup states and a small exact-package-boundary
+  regression test.
+- Updated the CI Python setup action to its current major version without adding
+  a version matrix.
+- Standardized item headings on the ASCII `WL-YYYYMMDD-NNN - Title` form and
+  rejected empty structured optional fields.
+- Added dependency-free contract tests for skill frontmatter and UI metadata,
+  plus manual smoke cases for state-preserving reschedule and named deletion.
+- Recorded a sandboxed local core runtime run separately from the still-pending
+  full manual corpus.
+
 ### Fixed
 
-- Pinned standalone ZIP entry times, process time zone, and line-ending settings
-  so the same Git/platform toolchain produces committed bytes and a stable
-  SHA-256 across invocation times and host configurations, with toolchain limits
-  documented.
-- Rejected unsafe or normalized ZIP paths, unexpected directories, encrypted or
-  oversized entries, symlinks, other non-regular file types, and corrupt payloads
-  or conflicting local-header metadata during archive validation. Canonical
-  layout checks also reject ambiguous prefixes, gaps, hidden records, trailing
-  data, unsafe permissions, unsupported extraction versions, timestamp/header
-  conflicts, and metadata that understates actual deflated content. Untrusted
-  diagnostic fields are escaped and bounded. Temporary source packaging now
-  rejects symbolic links, reparse points, special files, unexpected paths, and
-  oversized inputs before reading file payloads.
+- Fixed real Codex runtime cases that created a root watchlist or bypassed a
+  duplicate-ID private watchlist after misreading a bare filename as path intent.
+- Moved schema checks ahead of file and Git-metadata changes.
+- Separated current pending runtime evidence from a non-reproducible historical
+  observation so deterministic tests cannot be mistaken for agent-runtime proof.
+- Narrowed the skill description to explicit WATCHLIST intent after a real
+  runtime run showed that generic completion/archive wording caused a false
+  invocation.
+- Explicitly excluded generic task lifecycle requests after an independent
+  runtime rerun reproduced the false invocation from repository context.
+- Prevented an item's fields from leaking across the next `##` section boundary
+  during validation.
+- Clarified manual private-file fixtures as untracked and ignored, and removed an
+  ambiguous today-only prompt from the full-review runtime case.
+- Made an existing file's timezone authoritative for relative calendar terms,
+  item dates, and review buckets, with no silent host-timezone fallback.
+- Recorded exact runtime corpus IDs separately from ad hoc discovery and routing
+  checks.
+- Made the private-add runtime case independent of the execution time of day.
+
+### Removed
+
+- Removed the legacy `mode` field, `automation: none`, relaxed/strict validator
+  modes, field-order enforcement, and required empty fields.
+- Removed standalone ZIP packaging and its archive-format security checker.
+- Removed duplicated JSON/YAML/CSV semantic corpora and the linter that validated
+  their declarations without running an agent.
+- Removed exact-phrase policy checks, release-metadata machinery, duplicate
+  template/example files, and unverified vendor-specific installation recipes.
+
+### Security
+
+- Preserved unique-ID, read-only review, safe-pointer, authority, and sensitive
+  data rules in the smaller runtime contract.
+- Kept deterministic checks that reject credential patterns and tokenized URLs.
 
 ## [0.4.2] - 2026-07-17
 

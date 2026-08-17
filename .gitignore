@@ -1,6 +1,3 @@
 __pycache__/
 *.py[cod]
-.watchlist/*
-!.watchlist/.gitkeep
-dist/
-watchlist-md-skill.zip
+/.watchlist/WATCHLIST.md

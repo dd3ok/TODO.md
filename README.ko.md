@@ -1,84 +1,88 @@
 # WATCHLIST.md
 
-[![Maintainer checks: Python 3.8+](https://img.shields.io/badge/maintainer_checks-Python_3.8%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/dd3ok/WATCHLIST.md)](https://github.com/dd3ok/WATCHLIST.md/blob/main/LICENSE)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dd3ok/WATCHLIST.md/ci.yml?branch=main)](https://github.com/dd3ok/WATCHLIST.md/actions/workflows/ci.yml)
+[English](README.md)
 
-[English README](README.md)
+`watchlist-md`는 나중에 명시적으로 검토할 확인 작업을 Markdown에 기록하는
+경량 Agent Skill입니다. 스스로 깨어나거나 polling, 알림, 백그라운드 실행을
+하지 않습니다.
 
-`WATCHLIST.md`는 deferred check를 기록하기 위한 경량 **AI Agent Skill**이자 AgentSkills 호환 Markdown workflow입니다. Codex, Claude Code, Google Antigravity의 directory 기반 Agent Skills surface, Kilo, OpenClaw, Hermes, 그리고 Gemini Code Assist Standard/Enterprise 또는 유료 Gemini/Enterprise Agent Platform API key를 쓰는 Gemini CLI를 대상으로 합니다. CI 후속 확인, 배포 검증, PR 확인, 티켓, 작업, 데이터 동기화, 이메일을 scheduler, daemon, database, MCP server 없이 추적합니다. 문서상 format/path 호환성과 실제 runtime 검증은 구분하며, runtime smoke matrix의 pending 상태를 기준으로 봅니다.
+## 설치
 
-이 스킬은 자율 스케줄러, 자율 알림, daemon, database, cron job, UI, background worker가 아닙니다. 나중에 확인할 일을 기록할 뿐이며, 스스로 깨어나거나 polling, 알림, 확인 실행을 하지 않습니다.
-
-## Quickstart
-
-스킬 디렉토리를 설치합니다:
+저장소 루트가 아니라 스킬 디렉터리를 설치합니다.
 
 ```text
 $skill-installer install https://github.com/dd3ok/WATCHLIST.md/tree/main/.agents/skills/watchlist-md
 ```
 
-에이전트에게 요청합니다:
-
 ```text
 WATCHLIST.md에 추가해줘. 오늘 17:00에 GitHub Actions 결과 확인.
 ```
 
-이 source repo의 예시 워치리스트를 검증합니다:
+수동 설치는 `.agents/skills/watchlist-md` 전체를 대상 런타임이 지원하는 스킬
+디렉터리에 복사합니다. 자세한 내용은 [설치 문서](docs/install.md)를 참고하세요.
+
+기본 저장 위치는 비공개 작업 메모인 `.watchlist/WATCHLIST.md`입니다. Git 작업
+트리에서는 저장소 로컬 exclude로 이 경로를 추적 대상에서 제외합니다. 루트
+`WATCHLIST.md`는 사용자가 팀 공유 상태로 명시한 경우에만 사용합니다. 여기서
+비공개란 로컬·미추적이라는 뜻이며 암호화나 접근 제어를 뜻하지 않습니다.
+
+비밀정보, 원문 형태의 비공개 내용, 인증정보가 포함된 링크는 저장하지 않습니다.
+기록 자체가 배포, 결제, 외부 메시지 전송 같은 고위험 작업의 실행 권한이 되지는
+않습니다.
+
+## 스키마 v2
+
+두 표준 작업공간 경로에서 서로 겹치지 않는 `WL-YYYYMMDD-NNN` ID와 `open`,
+`blocked`, `done`, `dropped` 상태를 사용합니다.
+
+```md
+# WATCHLIST.md
+
+schema_version: 2
+timezone: Asia/Seoul
+
+## Open
+
+### WL-20260813-001 - CI 결과 확인
+- status: open
+- due_at: 2026-08-13T17:00:00+09:00
+- created_at: 2026-08-13T16:30:00+09:00
+- source: PR #123
+- action: GitHub Actions 결과 확인
+- done_when: 전체 통과 또는 실패 원인 기록
+
+## Done
+```
+
+`priority`는 선택 필드이며 사용할 때는 `P0`부터 `P3`까지 씁니다. `owner`도
+선택 필드입니다. `blocked`, `done`, `dropped` 항목에는 `last_checked_at`과
+`result`가 필요합니다. `## Archive`는 명시적으로 보관한 `done` 또는 `dropped`
+항목에만 사용합니다.
+
+기존 파일의 `timezone`은 별도 시간대가 없는 달력 표현, `created_at`과 항목 ID의
+로컬 날짜, 오늘 예정 같은 검토 분류의 기준입니다. 기한 시각에 별도 시간대를
+명시하면 그 시간대를 기한에 적용합니다. 기존 파일의 시간대를 해석할 수 없을
+때는 호스트 시간대로 조용히 대체하지 않고 중단합니다.
+
+재일정은 활성 항목의 `open` 또는 `blocked` 상태를 유지합니다. `done`이나
+`dropped` 항목을 재일정하려면 재개 여부를 먼저 확인합니다.
+
+스키마 v2만 지원합니다. 다른 스키마를 해석하거나 마이그레이션하지 않습니다.
+자세한 규칙은 [validation 문서](docs/validation.md)를 참고하세요.
+
+## 검증
+
+설치되는 스킬은 Python 없이 동작합니다. 저장소의 결정적 검증만 Python 표준
+라이브러리를 사용합니다.
 
 ```bash
-python3 evals/check_watchlist.py examples/WATCHLIST.example.md
+python -B -m unittest discover -s evals -p 'test_*.py'
+python -B tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
 ```
 
-## Skill Directory
-
-리포지토리 루트가 아니라 `SKILL.md`가 루트에 있는 스킬 디렉토리를 설치하거나 복사하세요:
-
-```text
-.agents/skills/watchlist-md
-```
-
-runtime bundle에는 스킬 지시문, 라이선스 고지, 템플릿, OpenAI 메타데이터, 짧은 reference가 들어갑니다:
-
-```text
-.agents/skills/watchlist-md/SKILL.md
-.agents/skills/watchlist-md/LICENSE.txt
-.agents/skills/watchlist-md/assets/WATCHLIST.template.md
-.agents/skills/watchlist-md/agents/openai.yaml
-.agents/skills/watchlist-md/references/format.md
-.agents/skills/watchlist-md/references/lifecycle.md
-.agents/skills/watchlist-md/references/safety.md
-```
-
-repository-only checks, examples, maintainer docs는 설치 가능한 스킬 디렉토리 밖에 둡니다.
-
-## What It Does / Does Not Do
-
-에이전트가 CI, 배포, PR, 티켓, 작업, 데이터 동기화, 주문, 결제, 이메일 후속 확인을 나중에 검토하도록 기록해야 할 때 사용하세요.
-
-Markdown 편집으로 add, review, complete, blocked, snoozed, dropped, explicit delete, explicit archive workflow를 지원합니다.
-
-하지 않는 일:
-
-- 확인 작업 자동 실행
-- reminder 또는 wakeup 전송
-- issue tracker, incident system, project management tool 대체
-- secret, signed URL, raw log, raw email, private excerpt 저장
-- 명시적 권한과 설정된 접근 수단 없이 private system 접근
-
-## Runtime Weight
-
-설치 가능한 runtime skill은 Python-free입니다. 에이전트는 스킬 계약에 따라 Markdown을 직접 편집하고, 이 source repo만 `tools/validate_watchlist.py`와 `evals/`에 결정적 검증을 둡니다.
-
-`.agents/skills/watchlist-md/`에 CLI, MCP server, browser automation, bundled validator, smoke transcript, screenshot, 긴 eval corpus를 넣지 마세요.
-
-각 벤더가 문서화한 discovery path 또는 install flow를 사용하세요. format/path 호환성은 runtime smoke pass가 아닙니다. 설치 세부사항과 pending 검증 matrix는 `docs/install.md`와 `docs/runtime-smoke.md`에 있습니다.
-
-## Docs
-
-- [Installation](docs/install.md): 최신 vendor 지원 범위와 discovery path, Codex·Claude Code setup, standalone zip packaging.
-- [Storage and privacy](docs/storage-and-privacy.md): generated `.watchlist/WATCHLIST.md`, shared root watchlists, archive policy, concurrent edits, retention.
-- [Validation](docs/validation.md): validator commands, strict-safety behavior, semantic cases, item format expectations.
-- [Runtime smoke](docs/runtime-smoke.md): transcript나 raw log 없는 compact vendor/runtime smoke matrix.
-- [Maintainer release checklist](docs/maintainers/release.md): package boundary와 pre-PR, publish, post-release checks.
-- [Maintainer self-checks](docs/maintainers/self-checks.md): canonical eval 관리 절차와 수동 runtime 점검 경계.
+단위 테스트는 스킬 메타데이터를 포함한 파일·패키지 인터페이스를 검증합니다.
+샌드박스를 유지한 로컬 핵심 runtime smoke에서 발견, 명시 호출, 추가, 기존 파일
+시간대 처리, 읽기 전용 검토, 완료 전환, 일반 요청 부정 라우팅, 중복 ID와 미지원
+스키마의 쓰기 전 중단을 확인했습니다. 전체 수동 코퍼스는 아직 실행하지 않았습니다.
+범위, 설정, 근거와 재현할 수 없는 과거 관찰은
+[runtime smoke 문서](docs/runtime-smoke.md)에 분리해 두었습니다.

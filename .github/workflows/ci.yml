@@ -18,40 +18,19 @@ concurrency:
 jobs:
   deterministic-checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.x"]
+    timeout-minutes: 3
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.x"
 
       - name: Run unit tests
-        run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s evals -p 'test_*.py'
+        run: python -B -m unittest discover -s evals -p 'test_*.py'
 
-      - name: Validate release metadata
-        run: python evals/check_release_metadata.py
-
-      - name: Check policy drift
-        run: python evals/check_policy_markers.py
-
-      - name: Check semantic cases
-        run: python evals/check_semantic_cases.py
-
-      - name: Validate example WATCHLIST
-        run: python evals/check_watchlist.py examples/WATCHLIST.example.md --strict-format --strict-safety --require-archive-section
-
-      - name: Validate bundled WATCHLIST template
-        run: python evals/check_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
-
-      - name: Smoke test maintainer validator
-        run: python tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md --strict-format --strict-safety --require-archive-section
-
-      - name: Check skill package shape
-        run: python evals/check_skill_package.py
+      - name: Validate bundled template
+        run: python -B tools/validate_watchlist.py .agents/skills/watchlist-md/assets/WATCHLIST.template.md
